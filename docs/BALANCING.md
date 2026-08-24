@@ -33,7 +33,7 @@ damit sie ab der ersten Runde etwas einbringen. Alle Attribute sind auf 0–100 
 > **Revidiert in M3.** Die Startwerte 50 bleiben, aber die Begründung war nur die halbe
 > Wahrheit: Sie mussten in M1 zwei Fragen gleichzeitig beantworten — *wie gut ist das
 > Ding* und *existiert es überhaupt schon*. Die zweite Frage beantwortet seit M3
-> `Project.progress`. Deshalb war ein unbesetztes Projekt in M1 und M2 die profitabelste
+> `Project.service_level`. Deshalb war ein unbesetztes Projekt in M1 und M2 die profitabelste
 > Besetzung überhaupt (siehe Nr. 11).
 
 ## 3. Tokens sind kaufbar
@@ -157,7 +157,7 @@ sein** — genau die Bedingung aus dem M2-Plan.
 
 # Meilenstein 3
 
-## 11. Ein unbesetztes Projekt bringt nichts mehr — `Project.progress`
+## 11. Ein unbesetztes Projekt bringt nichts mehr — `Project.service_level`
 
 **Der Fehler:** In M1 und M2 war ein Projekt, an dem niemand arbeitet, die profitabelste
 Besetzung. Es brachte Einnahmen (Qualität und Ästhetik starten bei 50) und kostete kein
@@ -167,15 +167,20 @@ zwanzig Runden nichts tun — **+110 €/Runde, dauerhaft, bei Alignment 100.**
 Das unterläuft die Prämisse des Spiels: Wenn Nichtstun profitabel ist, gibt es keinen
 Grund zu automatisieren.
 
-**Auflösung:** Ein Attribut `progress` (0–100) skaliert die Einnahmen. Startwert 25
+**Auflösung:** Ein Attribut `service_level` (0–100) skaliert die Einnahmen. Startwert 25
 („Briefing und Vertrag stehen"). Besetzte Projekte kommen voran, im Verhältnis der
 besetzten zu den geforderten Stellen und gewichtet mit der Effizienz; **komplett**
 unbesetzte fallen zurück. Dieselbe Partie ergibt jetzt −160 €/Runde und Bankrott in
 Runde 9.
 
+**Warum der Wert „Servicegrad" heißt:** Er fällt. Ein Fortschritt, der zurückgeht, ist
+keiner, und bei 100 % behauptet jedes Bau-Wort ein „fertig", das es hier nicht gibt —
+100 % ist eine Obergrenze, die das Team hält, kein Endzustand. Der Wert beantwortet, was
+der Kunde gerade bekommt, und genau das steht in der Einnahmenformel.
+
 **Warum der Verfall nicht anteilig ist:** Erwogen und verworfen. Bei drei Stellen und
 einer Besetzung ergäbe „34 × ⅓ − 15 × ⅔" **+1,3 pro Runde** — das Projekt bliebe bei 54 %
-stehen und würde nie fertig. Eine Falle, die der Spieler vorher nicht ablesen kann, also
+stehen und käme nie auf volle Leistung. Eine Falle, die der Spieler vorher nicht ablesen kann, also
 derselbe Einwand wie bei Nr. 8. Teilbesetzung wird stattdessen über den Deckel bestraft
 (Nr. 12).
 

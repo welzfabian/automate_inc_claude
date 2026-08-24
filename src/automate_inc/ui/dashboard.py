@@ -38,16 +38,16 @@ PHASE_STYLES = {
 AGENT_SYMBOL = "🤖"
 HUMAN_SYMBOL = "🧑"
 
-PROGRESS_WIDTH = 8
+SERVICE_BAR_WIDTH = 8
 
 
-def progress_bar(project) -> Text:
+def service_bar(project) -> Text:
     """A bar plus the number - the bar for the glance, the number for the decision."""
-    filled = int(round(project.progress / 100 * PROGRESS_WIDTH))
-    style = "green" if project.is_complete else "yellow"
+    filled = int(round(project.service_level / 100 * SERVICE_BAR_WIDTH))
+    style = "green" if project.at_full_service else "yellow"
     return Text.assemble(
-        ("▓" * filled + "░" * (PROGRESS_WIDTH - filled), style),
-        (f" {project.progress:3.0f}%", "dim"),
+        ("▓" * filled + "░" * (SERVICE_BAR_WIDTH - filled), style),
+        (f" {project.service_level:3.0f}%", "dim"),
     )
 
 
@@ -109,7 +109,7 @@ def projects_table(game: Game) -> RenderableType:
     table = Table(expand=True, header_style="dim", box=None, pad_edge=False)
     table.add_column("#", width=3)
     table.add_column("Projekt")
-    table.add_column(S.COL_PROGRESS, justify="left", width=14)
+    table.add_column(S.COL_SERVICE_LEVEL, justify="left", width=14)
     table.add_column(S.COL_QUALITY, justify="right", width=9)
     table.add_column(S.COL_AESTHETICS, justify="right", width=9)
     table.add_column(S.COL_BUGS, justify="right", width=6)
@@ -126,7 +126,7 @@ def projects_table(game: Game) -> RenderableType:
         table.add_row(
             str(index),
             project.name,
-            progress_bar(project),
+            service_bar(project),
             capped_attribute(project, state.workers, Role.DEVELOPER),
             capped_attribute(project, state.workers, Role.DESIGNER)
             if project.requires(Role.DESIGNER)

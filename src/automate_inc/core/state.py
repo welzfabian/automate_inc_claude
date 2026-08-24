@@ -10,7 +10,7 @@ from pathlib import Path
 from automate_inc.core.projects import Project
 from automate_inc.core.workers import Worker
 
-SAVE_FORMAT_VERSION = 3
+SAVE_FORMAT_VERSION = 4
 
 START_MONEY = 1000.0
 START_TOKENS = 50.0

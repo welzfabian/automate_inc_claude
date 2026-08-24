@@ -1,4 +1,4 @@
-"""Progress and maintenance: what a project earns depends on who works on it."""
+"""Service level and maintenance: a project earns what the client is getting."""
 
 import pytest
 
@@ -42,25 +42,25 @@ def full(game: Game) -> dict:
     return dict(game.state.active_projects[0].required_roles)
 
 
-# -- progress ----------------------------------------------------------------
+# -- the service level -------------------------------------------------------
 
 
 def test_a_new_project_starts_part_way_in():
     """The briefing and the contract are already done."""
     project = project_game().state.active_projects[0]
-    assert project.progress == TUNING.progress_start
+    assert project.service_level == TUNING.service_level_start
 
 
 def test_a_staffed_project_gets_finished():
     game = project_game(staffing={Role.DEVELOPER: 1, Role.DESIGNER: 1})
     play(game, 4)
-    assert game.state.active_projects[0].is_complete
+    assert game.state.active_projects[0].at_full_service
 
 
 def test_an_abandoned_project_falls_back_to_nothing():
     game = project_game()
     play(game, 3)
-    assert game.state.active_projects[0].progress == 0.0
+    assert game.state.active_projects[0].service_level == 0.0
 
 
 def test_an_abandoned_project_earns_nothing():
@@ -75,13 +75,13 @@ def test_abandoning_a_finished_project_undoes_it():
     game = project_game(staffing={Role.DEVELOPER: 1, Role.DESIGNER: 1})
     play(game, 4)
     project = game.state.active_projects[0]
-    assert project.is_complete
+    assert project.at_full_service
     for worker in list(game.state.workers):
         assert game.fire_worker(worker.id).ok
     play(game, 2)
-    assert 0.0 < project.progress < 100.0        # it slides, it does not snap
+    assert 0.0 < project.service_level < 100.0        # it slides, it does not snap
     play(game, 6)
-    assert project.progress == 0.0
+    assert project.service_level == 0.0
 
 
 def test_agents_build_faster_than_people():
@@ -100,7 +100,10 @@ def test_agents_build_faster_than_people():
         agents.assign_worker(agents.state.workers[-1].id, agents.state.active_projects[0].id)
     play(humans, 2)
     play(agents, 2)
-    assert agents.state.active_projects[0].progress > humans.state.active_projects[0].progress
+    assert (
+        agents.state.active_projects[0].service_level
+        > humans.state.active_projects[0].service_level
+    )
 
 
 def test_half_a_team_builds_at_half_speed():
@@ -108,16 +111,16 @@ def test_half_a_team_builds_at_half_speed():
     partly = project_game(staffing={Role.DEVELOPER: 1})
     play(fully, 1)
     play(partly, 1)
-    gained_full = fully.state.active_projects[0].progress - TUNING.progress_start
-    gained_part = partly.state.active_projects[0].progress - TUNING.progress_start
+    gained_full = fully.state.active_projects[0].service_level - TUNING.service_level_start
+    gained_part = partly.state.active_projects[0].service_level - TUNING.service_level_start
     assert gained_part == pytest.approx(gained_full / 2)
 
 
 def test_partial_staffing_still_finishes_eventually():
-    """Slower is a lane, not a trap - the reason progress does not decay per empty post."""
+    """Slower is a lane, not a trap - why an empty post costs no service level."""
     game = project_game(blueprint_id="mobile_app", staffing={Role.DEVELOPER: 1})
     play(game, 10)
-    assert game.state.active_projects[0].is_complete
+    assert game.state.active_projects[0].at_full_service
 
 
 # -- attribute caps ----------------------------------------------------------

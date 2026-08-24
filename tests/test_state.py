@@ -112,20 +112,20 @@ def test_agent_level_and_staleness_counter_survive_the_round_trip():
     assert restored.workers[0].rounds_in_assignment == original.workers[0].rounds_in_assignment
 
 
-@pytest.mark.parametrize("old_version", [1, 2])
+@pytest.mark.parametrize("old_version", [1, 2, 3])
 def test_saves_from_older_formats_are_rejected(old_version):
-    """Format 1 knew no research, format 2 no progress. No migration path on purpose."""
+    """Each version lost a field the next one has. No migration path on purpose."""
     data = researched_game().state.to_dict()
     data["format_version"] = old_version
     with pytest.raises(ValueError, match="Unsupported save format version"):
         GameState.from_dict(data)
 
 
-def test_the_current_save_format_is_version_three():
-    assert SAVE_FORMAT_VERSION == 3
+def test_the_current_save_format_is_version_four():
+    assert SAVE_FORMAT_VERSION == 4
 
 
-def test_project_progress_survives_the_round_trip():
+def test_project_service_level_survives_the_round_trip():
     original = researched_game().state
     restored = GameState.from_dict(json.loads(json.dumps(original.to_dict())))
-    assert restored.active_projects[0].progress == original.active_projects[0].progress
+    assert restored.active_projects[0].service_level == original.active_projects[0].service_level

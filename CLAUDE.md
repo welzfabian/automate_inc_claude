@@ -45,11 +45,11 @@ into `ui/`.
 level. This is why a loaded save resolves the next turn exactly as the original run
 would have — do not replace it with a live generator.
 
-**`resolve_turn()` has a fixed step order** (progress → worker effects → side effects →
+**`resolve_turn()` has a fixed step order** (service level → worker effects → side effects →
 alignment → income → costs → settle → token price → project lifecycle → phase → end
-conditions). Each step is its own private method. Reordering changes the balance: progress
-and the attribute effects both run before income, so a round's work is paid in the same
-round it happens.
+conditions). Each step is its own private method. Reordering changes the balance: the
+service level and the attribute effects both run before income, so a round's work is paid
+in the same round it happens.
 
 **Endings extend `END_CONDITIONS`** in `core/game.py` — a list of `EndCondition`. It holds
 bankruptcy and misalignment; the twist endings are meant to be appended, not special-cased.
@@ -60,12 +60,14 @@ questions instead of checking technology IDs. A new technology that reuses an ex
 modifier field is pure configuration in `data/technologies.json`; a new field needs an
 entry in the `AGGREGATION` table (max / multiplicative / additive) and nothing else.
 
-**A project earns only what has been built.** `Project.progress` (0-100) scales income,
-and the staffing of a project caps how high its attributes can climb
-(`economy.attribute_cap`). Both exist because an unstaffed project used to be the most
-profitable staffing there is (`BALANCING.md` 11-12). When touching the income formula,
-keep the property that full staffing beats every partial staffing - it is parametrised
-over every project in `tests/test_progress.py`.
+**A project earns what the client is currently getting.** `Project.service_level` (0-100)
+scales income, and it falls when nobody maintains the project - which is why it is not
+called progress: 100 is a ceiling the team holds, not a finished state.
+Staffing also caps how high a project's attributes can climb (`economy.attribute_cap`).
+Both exist because an unstaffed project used to be the most profitable staffing there is
+(`BALANCING.md` 11-12). When touching the income formula, keep the property that full
+staffing beats every partial staffing - it is parametrised over every project in
+`tests/test_service_level.py`.
 
 **Phases are derived, never stored.** `GameState.phase()` reads research (through
 `Modifiers`, never technology IDs) and the shape of the workforce, and it may fall back.
@@ -80,7 +82,7 @@ read the balance before deciding, which is why the dashboard shows it as `(±n/R
 All tunable numbers live in `src/automate_inc/data/*.json` (`projects.json`,
 `roles.json`, `technologies.json`). Adding a project or changing a cost must not require a
 code change. The `tuning` block at the top of `projects.json` holds the project mechanics
-(build rate, neglect, attribute cap base, entropy, sales visibility); read it through
+(service level build rate, neglect, attribute cap base, entropy, sales visibility); read it through
 `projects.load_tuning()`.
 
 **The spec documents in `docs/` are the original design, not the current truth.** Their

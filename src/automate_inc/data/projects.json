@@ -1,8 +1,8 @@
 {
   "tuning": {
-    "progress_start": 25,
-    "progress_build_rate": 34,
-    "progress_neglect_rate": 15,
+    "service_level_start": 25,
+    "service_level_build_rate": 34,
+    "service_level_neglect_rate": 15,
     "attribute_start": 50,
     "attribute_cap_base": 50,
     "attribute_entropy": 5,

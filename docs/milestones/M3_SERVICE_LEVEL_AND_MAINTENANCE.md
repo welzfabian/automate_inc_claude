@@ -1,4 +1,4 @@
-# M3 — Fortschritt und Instandhaltung
+# M3 — Servicegrad und Instandhaltung
 
 **Status:** ✅ Abgeschlossen
 **Geplant:** 24. August 2026
@@ -41,7 +41,7 @@ Spieler tatsächlich getan hat.
 
 ## Die Mechanik
 
-### 1. `Project.progress` — existiert es schon?
+### 1. `Project.service_level` — was bekommt der Kunde gerade?
 
 Ein Wert von 0 bis 100, der die Einnahmen skaliert. Startwert **25** („Briefing und
 Vertrag stehen"). Pro Runde:

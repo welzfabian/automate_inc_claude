@@ -12,7 +12,7 @@ from automate_inc.core.workers import Role, Worker, WorkerType, load_roles
 def test_spec_example_web_app_income():
     """SPEC 6.1: 200 * 0.90 * 0.80 * 0.90 * 1.50 = 194.40, on a finished project."""
     income = economy.calculate_income(
-        base_income=200, progress=100, quality=90, aesthetics=80, bugs=10, visibility_bonus=50
+        base_income=200, service_level=100, quality=90, aesthetics=80, bugs=10, visibility_bonus=50
     )
     assert income == pytest.approx(194.40)
 
@@ -20,7 +20,7 @@ def test_spec_example_web_app_income():
 def test_spec_example_saas_income():
     """SPEC 6.1: 200 * 0.95 * 1.00 * 1.00 * 1.30 = 247.00, on a finished project."""
     income = economy.calculate_income(
-        base_income=200, progress=100, quality=95, aesthetics=100, bugs=0, visibility_bonus=30
+        base_income=200, service_level=100, quality=95, aesthetics=100, bugs=0, visibility_bonus=30
     )
     assert income == pytest.approx(247.00)
 
@@ -28,16 +28,16 @@ def test_spec_example_saas_income():
 def test_an_unbuilt_project_earns_nothing():
     """The reason an unstaffed project is no longer free money."""
     assert economy.calculate_income(
-        base_income=200, progress=0, quality=100, aesthetics=100, bugs=0, visibility_bonus=0
+        base_income=200, service_level=0, quality=100, aesthetics=100, bugs=0, visibility_bonus=0
     ) == 0.0
 
 
-def test_income_scales_linearly_with_progress():
+def test_income_scales_linearly_with_the_service_level():
     half = economy.calculate_income(
-        base_income=200, progress=50, quality=100, aesthetics=100, bugs=0, visibility_bonus=0
+        base_income=200, service_level=50, quality=100, aesthetics=100, bugs=0, visibility_bonus=0
     )
     full = economy.calculate_income(
-        base_income=200, progress=100, quality=100, aesthetics=100, bugs=0, visibility_bonus=0
+        base_income=200, service_level=100, quality=100, aesthetics=100, bugs=0, visibility_bonus=0
     )
     assert half == pytest.approx(full / 2)
 
@@ -49,11 +49,11 @@ def test_project_without_designer_is_not_punished_for_aesthetics():
     static website earns nothing forever.
     """
     with_aesthetics = economy.calculate_income(
-        base_income=100, progress=100, quality=100, aesthetics=0, bugs=0, visibility_bonus=0
+        base_income=100, service_level=100, quality=100, aesthetics=0, bugs=0, visibility_bonus=0
     )
     neutral = economy.calculate_income(
         base_income=100,
-        progress=100,
+        service_level=100,
         quality=100,
         aesthetics=0,
         bugs=0,
@@ -125,7 +125,7 @@ def test_the_sales_post_pays_for_itself():
         required_roles={Role.SALES: 1},
         base_income=246,
         basis_fixed_costs=10,
-        progress=100,
+        service_level=100,
         quality=100,
         aesthetics=100,
     )

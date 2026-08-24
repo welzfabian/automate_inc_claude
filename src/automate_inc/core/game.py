@@ -379,7 +379,7 @@ class Game:
         # even if a later step were to change what is researched.
         modifiers = self.modifiers
 
-        self._advance_progress()
+        self._advance_service_level()
         self._apply_worker_effects(modifiers)
         self._apply_side_effects(report, rng, modifiers)
         self._update_alignment(report, modifiers)
@@ -427,10 +427,12 @@ class Game:
                 )
                 project.adjust(attribute, delta)
 
-    def _advance_progress(self) -> None:
-        """A project only earns what has actually been built."""
+    def _advance_service_level(self) -> None:
+        """A project earns only what the client is actually getting."""
         for project in self.state.active_projects:
-            project.adjust("progress", economy.progress_delta(project, self.state.workers))
+            project.adjust(
+                "service_level", economy.service_level_delta(project, self.state.workers)
+            )
 
     def _apply_side_effects(
         self, report: TurnReport, rng: random.Random, modifiers: Modifiers

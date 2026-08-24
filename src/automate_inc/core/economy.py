@@ -24,7 +24,7 @@ TOKEN_PRICE_INFLATION = 1.01
 
 def calculate_income(
     base_income: float,
-    progress: float,
+    service_level: float,
     quality: float,
     aesthetics: float,
     bugs: float,
@@ -36,13 +36,13 @@ def calculate_income(
 
     Two deviations from the written formula. ``aesthetics_applies``: a project that
     never asked for a designer is not punished for having no aesthetics. And
-    ``progress``: an unbuilt project earns nothing, however good its attributes
-    look - that is what stops an unstaffed project from being free money.
+    ``service_level``: you are paid for what the client is actually getting right
+    now - that is what stops an unstaffed project from being free money.
     """
     aesthetics_factor = (aesthetics / 100.0) if aesthetics_applies else 1.0
     return (
         base_income
-        * (progress / 100.0)
+        * (service_level / 100.0)
         * (quality / 100.0)
         * aesthetics_factor
         * ((100.0 - bugs) / 100.0)
@@ -50,21 +50,21 @@ def calculate_income(
     )
 
 
-def progress_delta(project: Project, workers: Iterable[Worker]) -> float:
-    """How far a project moves toward being finished this round.
+def service_level_delta(project: Project, workers: Iterable[Worker]) -> float:
+    """How much the service this project delivers moves this round.
 
-    Staffed projects advance in proportion to how many of their posts are filled,
-    weighted by efficiency. Only a completely abandoned project falls back: partial
-    staffing is punished through the attribute caps instead. Making it lose progress
-    too would let a one-third staffed project stall below 100 forever - a trap the
-    player cannot read in advance.
+    Staffed projects climb in proportion to how many of their posts are filled,
+    weighted by efficiency. Only a completely abandoned project slides back: partial
+    staffing is punished through the attribute caps instead. Taking the service level
+    away too would let a one-third staffed project stall below 100 forever - a trap
+    the player cannot read in advance.
     """
     tuning = load_tuning()
     assigned = [w for w in workers if w.assigned_to == project.id]
     if not assigned:
-        return -tuning.progress_neglect_rate
+        return -tuning.service_level_neglect_rate
     slots = sum(project.required_roles.values())
-    return tuning.progress_build_rate * sum(w.efficiency for w in assigned) / slots
+    return tuning.service_level_build_rate * sum(w.efficiency for w in assigned) / slots
 
 
 def attribute_cap(project: Project, workers: Iterable[Worker], role: Role) -> float:
@@ -127,7 +127,7 @@ def project_income(
     workers = list(workers)
     return calculate_income(
         base_income=project.base_income,
-        progress=project.progress,
+        service_level=project.service_level,
         quality=project.quality,
         aesthetics=project.aesthetics,
         bugs=project.bugs,

@@ -20,9 +20,9 @@ INITIAL_BUGS = 0.0
 class Tuning:
     """Balancing knobs for the project mechanics. Data, never code."""
 
-    progress_start: float
-    progress_build_rate: float
-    progress_neglect_rate: float
+    service_level_start: float
+    service_level_build_rate: float
+    service_level_neglect_rate: float
     attribute_start: float
     attribute_cap_base: float
     attribute_entropy: float
@@ -76,15 +76,19 @@ class Project:
     basis_fixed_costs: int
     lifetime: int
     current_round: int = 0
-    progress: float = 0.0
+    service_level: float = 0.0
     quality: float = 0.0
     aesthetics: float = 0.0
     bugs: float = INITIAL_BUGS
     assigned_workers: list[str] = field(default_factory=list)
 
     @property
-    def is_complete(self) -> bool:
-        return self.progress >= ATTRIBUTE_MAX
+    def at_full_service(self) -> bool:
+        """Running at the full level it was sold at - not a finished state.
+
+        It is a ceiling the team holds, and it slides back the moment nobody does.
+        """
+        return self.service_level >= ATTRIBUTE_MAX
 
     @property
     def is_expired(self) -> bool:
@@ -119,7 +123,7 @@ class Project:
             "basis_fixed_costs": self.basis_fixed_costs,
             "lifetime": self.lifetime,
             "current_round": self.current_round,
-            "progress": self.progress,
+            "service_level": self.service_level,
             "quality": self.quality,
             "aesthetics": self.aesthetics,
             "bugs": self.bugs,
@@ -138,7 +142,7 @@ class Project:
             basis_fixed_costs=data["basis_fixed_costs"],
             lifetime=data["lifetime"],
             current_round=data["current_round"],
-            progress=data["progress"],
+            service_level=data["service_level"],
             quality=data["quality"],
             aesthetics=data["aesthetics"],
             bugs=data["bugs"],
@@ -188,7 +192,7 @@ class ProjectRegistry:
             base_income=blueprint.base_income,
             basis_fixed_costs=blueprint.basis_fixed_costs,
             lifetime=blueprint.lifetime,
-            progress=tuning.progress_start,
+            service_level=tuning.service_level_start,
             quality=tuning.attribute_start,
             aesthetics=tuning.attribute_start,
         )
