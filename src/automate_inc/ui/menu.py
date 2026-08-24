@@ -14,6 +14,12 @@ from automate_inc.ui import dashboard
 
 DEFAULT_SAVE = Path("saves/savegame.json")
 
+AGENT_LEVEL_HINTS = {
+    1: " (zuverlässig, keine Nebeneffekte)",
+    2: " (effizienter — macht Fehler, −1 ⚖/Runde)",
+    3: " (doppelte Effizienz — macht mehr Fehler, −3 ⚖/Runde)",
+}
+
 
 class Abort(Exception):
     """Raised when stdin closes - the player is gone, stop asking them things."""
@@ -54,6 +60,9 @@ class Menu:
 
     def show(self, result: ActionResult) -> None:
         self.note(result.message, style="green" if result.ok else "red")
+        tone = dashboard.agent_tone(self.game.state)
+        if result.ok and tone:
+            self.note(f"🤖 {tone}", style="dim italic")
 
     # -- action handlers -----------------------------------------------------
 
@@ -72,7 +81,23 @@ class Menu:
         type_key = self.choose("Mensch oder Agent?", options)
         if type_key is None:
             return self.note(S.CANCELLED, style="dim")
-        self.show(self.game.hire_worker(role, WorkerType(type_key)))
+        worker_type = WorkerType(type_key)
+        level = 1
+        unlocked = self.game.modifiers.unlocked_agent_level
+        if worker_type is WorkerType.AGENT and unlocked > 1:
+            levels = [
+                (
+                    str(lvl),
+                    f"Stufe {lvl} — {self.game.hiring_cost(role, worker_type, lvl):.2f} € pro Runde"
+                    f"{AGENT_LEVEL_HINTS[lvl]}",
+                )
+                for lvl in range(1, unlocked + 1)
+            ]
+            level_key = self.choose("Welche Stufe?", levels)
+            if level_key is None:
+                return self.note(S.CANCELLED, style="dim")
+            level = int(level_key)
+        self.show(self.game.hire_worker(role, worker_type, level))
 
     def fire(self) -> None:
         workers = self.game.state.workers
@@ -118,6 +143,42 @@ class Menu:
             return self.note(S.CANCELLED, style="dim")
         self.show(self.game.unassign_worker(worker_id))
 
+    def research(self) -> None:
+        self.console.print()
+        self.console.print(dashboard.research_panel(self.game))
+        available = self.game.available_technologies()
+        if not available:
+            return self.note(S.RESEARCH_EMPTY_AVAILABLE, style="dim")
+        options = [
+            (tech.id, f"{tech.name} — {tech.cost} 🔬 — {tech.description}")
+            for tech in available
+        ]
+        tech_id = self.choose(S.HEADER_RESEARCH, options)
+        if tech_id is None:
+            return self.note(S.CANCELLED, style="dim")
+        self.show(self.game.research(tech_id))
+
+    def upgrade(self) -> None:
+        agents = [
+            w
+            for w in self.game.state.workers
+            if not w.is_human and w.level < self.game.modifiers.unlocked_agent_level
+        ]
+        if not agents:
+            return self.note(S.ERR_MAX_LEVEL, style="dim")
+        options = [
+            (
+                w.id,
+                f"{dashboard.worker_label(w)} → Stufe {w.level + 1} "
+                f"— {self.game.upgrade_cost(w):.2f} €",
+            )
+            for w in agents
+        ]
+        worker_id = self.choose("Welchen Agenten aufwerten?", options)
+        if worker_id is None:
+            return self.note(S.CANCELLED, style="dim")
+        self.show(self.game.upgrade_agent(worker_id))
+
     def buy_tokens(self) -> None:
         price = self.game.state.token_price
         self.console.print()
@@ -157,7 +218,9 @@ class Menu:
             "4": self.assign,
             "5": self.unassign,
             "6": self.buy_tokens,
-            "7": self.end_turn,
+            "7": self.research,
+            "8": self.upgrade,
+            "9": self.end_turn,
             "s": self.save,
             "l": self.load,
         }

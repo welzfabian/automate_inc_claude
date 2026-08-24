@@ -11,8 +11,24 @@ from rich.text import Text
 from automate_inc import strings as S
 from automate_inc.core import economy
 from automate_inc.core.game import Game, TurnReport
+from automate_inc.core.game import alignment_tier
 from automate_inc.core.state import GameState, Phase
+from automate_inc.core.tech import TechCategory
 from automate_inc.core.workers import Role, Worker, load_roles
+
+CATEGORY_NAMES = {
+    TechCategory.FOUNDATION: "Grundlagen",
+    TechCategory.ECONOMY: "Wirtschaft",
+    TechCategory.AI: "KI",
+    TechCategory.DANGEROUS: "Gefährlich",
+}
+
+CATEGORY_STYLES = {
+    TechCategory.FOUNDATION: "cyan",
+    TechCategory.ECONOMY: "green",
+    TechCategory.AI: "yellow",
+    TechCategory.DANGEROUS: "bold red",
+}
 
 PHASE_STYLES = {
     Phase.BUILDUP: "cyan",
@@ -38,8 +54,10 @@ def alignment_style(value: float) -> str:
     return "bold red blink"
 
 
-def header(state: GameState) -> RenderableType:
+def header(game: Game) -> RenderableType:
+    state = game.state
     phase_style = PHASE_STYLES[state.phase]
+    delta = economy.alignment_delta(state.workers, game.modifiers)
     title = Text.assemble(
         (S.TITLE, "bold"),
         ("  ──  ", "dim"),
@@ -57,6 +75,7 @@ def header(state: GameState) -> RenderableType:
         (f"{state.research}", "cyan"),
         ("     ⚖ ", "dim"),
         (f"{state.alignment:.0f}", alignment_style(state.alignment)),
+        (f" ({delta:+.0f}/Runde)", "dim" if delta >= 0 else "dim red"),
     )
     return Panel(Group(Align.center(title), Align.center(resources)), border_style=phase_style)
 
@@ -77,8 +96,8 @@ def projects_table(game: Game) -> RenderableType:
     table.add_column(S.COL_NET, justify="right", width=12)
 
     for index, project in enumerate(state.active_projects, start=1):
-        income = economy.project_income(project, state.workers)
-        costs = economy.project_costs(project, state.workers)
+        income = economy.project_income(project, state.workers, game.modifiers)
+        costs = economy.project_costs(project, state.workers, game.modifiers)
         net = income - costs.money - costs.tokens * state.token_price
         needed = sum(project.required_roles.values())
         staffed = len(state.workers_on(project.id))
@@ -111,7 +130,7 @@ def team_table(game: Game) -> RenderableType:
 
     for index, worker in enumerate(state.workers, start=1):
         spec = catalog.spec(worker.role)
-        cost = worker.cost_per_round()
+        cost = worker.cost_per_round(game.modifiers)
         cost_text = (
             Text(f"{cost.money:.0f} €", style="green")
             if worker.is_human
@@ -134,6 +153,64 @@ def worker_label(worker: Worker) -> str:
     if worker.is_human:
         return f"{HUMAN_SYMBOL} {worker.name}"
     return f"{AGENT_SYMBOL} {spec.name}-Agent Lv{worker.level}"
+
+
+def research_panel(game: Game) -> RenderableType:
+    """Researched, available and locked - locked entries name what is missing."""
+    state = game.state
+    registry = game.tech_registry
+    table = Table.grid(padding=(0, 2))
+    table.add_column(width=11)
+    table.add_column()
+    table.add_column(justify="right", width=8)
+
+    def section(title: str, style: str) -> None:
+        table.add_row("", Text(title, style=f"bold {style}"), "")
+
+    done = registry.resolve(state.researched)
+    if done:
+        section(S.RESEARCH_DONE_HEADER, "green")
+        for tech in done:
+            table.add_row(Text("✓", style="green"), Text(tech.name, style="dim"), "")
+
+    available = game.available_technologies()
+    section(S.RESEARCH_AVAILABLE, "cyan")
+    if not available:
+        table.add_row("", Text(S.RESEARCH_EMPTY_AVAILABLE, style="dim"), "")
+    for tech in available:
+        affordable = state.research >= tech.cost
+        table.add_row(
+            Text(CATEGORY_NAMES[tech.category], style=CATEGORY_STYLES[tech.category]),
+            Text(tech.name, style="" if affordable else "dim"),
+            Text(f"{tech.cost} 🔬", style="cyan" if affordable else "dim"),
+        )
+
+    locked = [
+        tech
+        for tech in registry.all()
+        if tech.id not in state.researched and registry.missing_requirements(tech, state.researched)
+    ]
+    if locked:
+        section(S.RESEARCH_LOCKED, "dim")
+        for tech in locked:
+            missing = ", ".join(
+                m.name
+                for m in (
+                    registry.get(i) for i in registry.missing_requirements(tech, state.researched)
+                )
+                if m is not None
+            )
+            table.add_row(
+                Text("🔒", style="dim"),
+                Text(f"{tech.name} — {S.RESEARCH_LOCKED_HINT.format(missing=missing)}", style="dim"),
+                Text(f"{tech.cost} 🔬", style="dim"),
+            )
+    return Panel(table, title=S.HEADER_RESEARCH, border_style="dim")
+
+
+def agent_tone(state: GameState) -> str:
+    """The acknowledgement line agents append to your orders. Cosmetic - for now."""
+    return S.AGENT_ACK[alignment_tier(state.alignment)]
 
 
 def log_panel(state: GameState) -> RenderableType:
@@ -161,7 +238,7 @@ def menu_panel() -> RenderableType:
 
 def render(console: Console, game: Game) -> None:
     console.clear()
-    console.print(header(game.state))
+    console.print(header(game))
     console.print(projects_table(game))
     console.print(team_table(game))
     console.print(log_panel(game.state))
@@ -176,6 +253,14 @@ def turn_summary(report: TurnReport) -> RenderableType:
     table.add_row("Kosten", Text(f"{-report.costs_money:,.2f} €", style="red"))
     table.add_row("Tokens verbraucht", Text(f"{report.costs_tokens:,.0f} ♦", style="yellow"))
     table.add_row("Bilanz", Text(f"{report.net:+,.2f} €", style=money_style(report.net)))
+    if report.alignment_delta:
+        table.add_row(
+            S.COL_ALIGNMENT_BALANCE,
+            Text(
+                f"{report.alignment_delta:+.0f} ⚖",
+                style="green" if report.alignment_delta > 0 else "red",
+            ),
+        )
     return Panel(table, title=S.TURN_HEADER.format(turn=report.turn), border_style="dim")
 
 

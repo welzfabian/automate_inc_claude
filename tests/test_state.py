@@ -73,3 +73,52 @@ def test_new_ids_do_not_collide_after_loading(tmp_path):
 def test_unknown_save_format_is_rejected():
     with pytest.raises(ValueError):
         GameState.from_dict({"format_version": 999})
+
+
+# -- research and agent levels (M2, save format 2) ---------------------------
+
+
+def researched_game(seed=12) -> Game:
+    game = Game(seed=seed)
+    game.state.research = 500
+    game.research("ai_intelligence_2")
+    game.research("token_optimization")
+    game.hire_worker(Role.DEVELOPER, WorkerType.AGENT, level=2)
+    game.start_project("static_website")
+    project_id = game.state.active_projects[0].id
+    game.assign_worker(game.state.workers[0].id, project_id)
+    game.resolve_turn()
+    return game
+
+
+def test_researched_technologies_survive_the_round_trip():
+    original = researched_game().state
+    restored = GameState.from_dict(json.loads(json.dumps(original.to_dict())))
+    assert restored.researched == original.researched
+    assert restored.to_dict() == original.to_dict()
+
+
+def test_a_loaded_game_keeps_its_modifiers(tmp_path):
+    game = researched_game()
+    path = tmp_path / "save.json"
+    game.save(path)
+    assert Game.load(path).modifiers == game.modifiers
+
+
+def test_agent_level_and_staleness_counter_survive_the_round_trip():
+    original = researched_game().state
+    restored = GameState.from_dict(json.loads(json.dumps(original.to_dict())))
+    assert restored.workers[0].level == 2
+    assert restored.workers[0].rounds_in_assignment == original.workers[0].rounds_in_assignment
+
+
+def test_saves_from_before_the_tech_tree_are_rejected():
+    """Format 1 knew no research; there is deliberately no migration path."""
+    data = researched_game().state.to_dict()
+    data["format_version"] = 1
+    with pytest.raises(ValueError, match="Unsupported save format version"):
+        GameState.from_dict(data)
+
+
+def test_the_current_save_format_is_version_two():
+    assert SAVE_FORMAT_VERSION == 2

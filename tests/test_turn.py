@@ -2,6 +2,7 @@
 
 import pytest
 
+from automate_inc.core import economy
 from automate_inc.core.game import Game
 from automate_inc.core.state import GameState, Phase
 from automate_inc.core.workers import Role, WorkerType
@@ -122,3 +123,147 @@ def test_buying_more_tokens_than_you_can_afford_is_refused():
     result = game.buy_tokens(10_000)
     assert not result.ok
     assert game.state.tokens == GameState().tokens
+
+
+# -- agent side effects (M2) -------------------------------------------------
+
+
+# A project that actually asks for the role under test - assigning a worker to a
+# project that does not want it is refused, and then nothing would be measured.
+BLUEPRINT_FOR = {
+    Role.DEVELOPER: "static_website",
+    Role.DESIGNER: "ecommerce_shop",
+    Role.SALES: "mobile_app",
+    Role.RESEARCHER: "static_website",
+}
+
+
+def agent_game(role=Role.DEVELOPER, level=2, seed=6, lifetime=100) -> Game:
+    """One agent of the given level on one long-running project.
+
+    A throwaway human starts the project and is fired immediately: a company of
+    nothing but level 1 agents cannot start one (BALANCING.md 1), and the test
+    needs exactly one worker left so that there is exactly one RNG draw per turn.
+    """
+    game = Game(seed=seed)
+    game.state.research = 500
+    game.research("ai_intelligence_2")
+    if level >= 3:
+        game.research("ai_intelligence_3")
+    game.state.research = 0
+
+    game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN)
+    starter = game.state.workers[0]
+    assert game.start_project(BLUEPRINT_FOR[role]).ok
+    assert game.fire_worker(starter.id).ok
+
+    game.hire_worker(role, WorkerType.AGENT, level)
+    project = game.state.active_projects[0]
+    project.lifetime = lifetime
+    game.assign_worker(game.state.workers[0].id, project.id)
+    return game
+
+
+def run_solvent(game: Game, turns: int) -> list[str]:
+    """Resolve turns while keeping the books topped up.
+
+    These tests are about side effects, not about the economy; bankruptcy would
+    end the game and cut the sample short.
+    """
+    events: list[str] = []
+    for _ in range(turns):
+        game.state.money = 100_000.0
+        game.state.tokens = 10_000.0
+        events.extend(game.resolve_turn().events)
+    return events
+
+
+def test_level_one_agents_still_have_no_side_effects():
+    game = agent_game(level=1, seed=6)
+    project = game.state.active_projects[0]
+    run_solvent(game, 40)
+    assert project.bugs == 0.0
+
+
+def test_a_level_two_developer_agent_introduces_bugs():
+    game = agent_game(level=2, seed=6)
+    project = game.state.active_projects[0]
+    run_solvent(game, 40)
+    assert project.bugs > 0.0
+
+
+def test_bug_fixing_research_halves_the_rate():
+    """Level 3 fails often enough (5 %) to make the halving visible in 40 turns."""
+    plain = agent_game(level=3, seed=6)
+    with_fix = agent_game(level=3, seed=6)
+    with_fix.state.research = 35
+    assert with_fix.research("bug_fixing").ok
+
+    plain_events = [e for e in run_solvent(plain, 40) if "Edge Case" in e]
+    fixed_events = [e for e in run_solvent(with_fix, 40) if "Edge Case" in e]
+    assert len(plain_events) == 5
+    assert len(fixed_events) == 2
+
+
+def test_a_sales_agent_costs_money_when_it_oversells():
+    game = agent_game(role=Role.SALES, level=3, seed=6)
+    events = run_solvent(game, 40)
+    assert any("Schadensbegrenzung" in event for event in events)
+
+
+def test_a_researcher_agent_can_waste_research_points():
+    game = agent_game(role=Role.RESEARCHER, level=3, seed=6)
+    events = run_solvent(game, 40)
+    assert any("Sackgasse" in event for event in events)
+
+
+def test_research_points_never_go_negative():
+    game = agent_game(role=Role.RESEARCHER, level=3, seed=6)
+    run_solvent(game, 40)
+    assert game.state.research >= 0
+
+
+# -- designer staleness (M2) -------------------------------------------------
+
+
+def visibility(game: Game) -> float:
+    project = game.state.active_projects[0]
+    return economy.visibility_bonus_for(project, game.state.workers)
+
+
+def test_a_designer_agent_goes_generic_after_five_rounds():
+    game = agent_game(role=Role.DESIGNER, level=2, seed=6)
+    assert visibility(game) == 0.0
+    run_solvent(game, 4)
+    assert visibility(game) == 0.0
+    run_solvent(game, 1)
+    assert visibility(game) == -5.0
+
+
+def test_the_staleness_penalty_scales_with_the_agent_level():
+    game = agent_game(role=Role.DESIGNER, level=3, seed=6)
+    run_solvent(game, 5)
+    assert visibility(game) == -10.0
+
+
+def test_human_designers_never_go_stale():
+    game = Game(seed=6)
+    game.hire_worker(Role.DESIGNER, WorkerType.HUMAN)
+    assert game.start_project("ecommerce_shop").ok
+    project = game.state.active_projects[0]
+    project.lifetime = 100
+    game.assign_worker(game.state.workers[0].id, project.id)
+    run_solvent(game, 10)
+    assert visibility(game) == 0.0
+
+
+def test_reassignment_resets_the_staleness_counter():
+    game = agent_game(role=Role.DESIGNER, level=2, seed=6)
+    run_solvent(game, 6)
+    assert visibility(game) == -5.0
+    worker = game.state.workers[0]
+    project = game.state.active_projects[0]
+    assert game.unassign_worker(worker.id).ok
+    assert worker.rounds_in_assignment == 0
+    assert game.assign_worker(worker.id, project.id).ok
+    assert visibility(game) == 0.0

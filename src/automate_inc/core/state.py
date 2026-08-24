@@ -10,7 +10,7 @@ from pathlib import Path
 from automate_inc.core.projects import Project
 from automate_inc.core.workers import Worker
 
-SAVE_FORMAT_VERSION = 1
+SAVE_FORMAT_VERSION = 2
 
 START_MONEY = 1000.0
 START_TOKENS = 50.0
@@ -43,6 +43,7 @@ class GameState:
     research: int = START_RESEARCH
     alignment: float = START_ALIGNMENT
     turn: int = 0
+    researched: list[str] = field(default_factory=list)
     workers: list[Worker] = field(default_factory=list)
     active_projects: list[Project] = field(default_factory=list)
     rng_seed: int = 0
@@ -66,6 +67,9 @@ class GameState:
     def workers_on(self, project_id: str) -> list[Worker]:
         return [w for w in self.workers if w.assigned_to == project_id]
 
+    def has_researched(self, tech_id: str) -> bool:
+        return tech_id in self.researched
+
     def add_log(self, message: str) -> None:
         self.log.append(message)
         del self.log[:-MAX_LOG_ENTRIES]
@@ -79,6 +83,7 @@ class GameState:
             "research": self.research,
             "alignment": self.alignment,
             "turn": self.turn,
+            "researched": list(self.researched),
             "workers": [w.to_dict() for w in self.workers],
             "active_projects": [p.to_dict() for p in self.active_projects],
             "rng_seed": self.rng_seed,
@@ -98,6 +103,7 @@ class GameState:
             research=data["research"],
             alignment=data["alignment"],
             turn=data["turn"],
+            researched=list(data["researched"]),
             workers=[Worker.from_dict(w) for w in data["workers"]],
             active_projects=[Project.from_dict(p) for p in data["active_projects"]],
             rng_seed=data["rng_seed"],

@@ -31,11 +31,28 @@ class Effect:
 
 @dataclass(frozen=True)
 class ErrorChance:
-    """A rare mistake a human makes. Agents at level 1 have none."""
+    """A rare mistake. Humans always have one; agents only from level 2 up."""
 
     chance: float
     attribute: str
     amount: float
+
+
+@dataclass(frozen=True)
+class Staleness:
+    """A penalty that grows out of routine rather than out of a dice roll.
+
+    Only the designer has one: an agent that works the same project for too long
+    starts producing generic designs (GAME_DESIGN.md 1).
+    """
+
+    after_rounds: int
+    penalty: dict[int, float]
+
+    def penalty_for(self, level: int, rounds_in_assignment: int) -> float:
+        if rounds_in_assignment < self.after_rounds:
+            return 0.0
+        return self.penalty.get(level, 0.0)
 
 
 @dataclass(frozen=True)
@@ -47,6 +64,12 @@ class RoleSpec:
     agent_tokens: int
     effect: Effect
     human_error: ErrorChance
+    agent_side_effect: dict[int, ErrorChance]
+    agent_staleness: Staleness | None = None
+
+    def side_effect_for(self, level: int) -> ErrorChance | None:
+        """Level 1 agents have no side effects by design - that is the bait."""
+        return self.agent_side_effect.get(level)
 
 
 @dataclass(frozen=True)
@@ -59,6 +82,15 @@ class RoleCatalog:
 
     def spec(self, role: Role) -> RoleSpec:
         return self.roles[role]
+
+
+def _staleness(raw: dict | None) -> Staleness | None:
+    if not raw:
+        return None
+    return Staleness(
+        after_rounds=raw["after_rounds"],
+        penalty={int(level): float(value) for level, value in raw["penalty"].items()},
+    )
 
 
 @lru_cache(maxsize=1)
@@ -74,6 +106,11 @@ def load_roles() -> RoleCatalog:
             agent_tokens=entry["agent_tokens"],
             effect=Effect(**entry["effect"]),
             human_error=ErrorChance(**entry["human_error"]),
+            agent_side_effect={
+                int(level): ErrorChance(**data)
+                for level, data in entry.get("agent_side_effect", {}).items()
+            },
+            agent_staleness=_staleness(entry.get("agent_staleness")),
         )
         for entry in raw["roles"]
     }
@@ -103,6 +140,8 @@ class Worker:
     name: str = ""
     level: int = 1
     assigned_to: str | None = None
+    rounds_in_assignment: int = 0
+    """Rounds spent on the current assignment; reset whenever it changes."""
 
     @property
     def is_human(self) -> bool:
@@ -124,13 +163,18 @@ class Worker:
         key = "HUMAN" if self.is_human else f"AGENT_{self.level}"
         return catalog.efficiency[key]
 
-    def cost_per_round(self) -> Cost:
-        """Humans cost money, agents cost tokens. Unassigned workers still cost."""
+    def cost_per_round(self, modifiers: object | None = None) -> Cost:
+        """Humans cost money, agents cost tokens. Unassigned workers still cost.
+
+        ``modifiers`` is a ``tech.Modifiers``; typed loosely to keep this module
+        free of a tech import it would otherwise only need for an annotation.
+        """
         spec = load_roles().spec(self.role)
         if self.is_human:
             return Cost(money=float(spec.human_salary))
         multiplier = load_roles().agent_token_multiplier[self.level]
-        return Cost(tokens=spec.agent_tokens * multiplier)
+        discount = getattr(modifiers, "token_cost_multiplier", 1.0)
+        return Cost(tokens=spec.agent_tokens * multiplier * discount)
 
     def to_dict(self) -> dict:
         return {
@@ -140,6 +184,7 @@ class Worker:
             "name": self.name,
             "level": self.level,
             "assigned_to": self.assigned_to,
+            "rounds_in_assignment": self.rounds_in_assignment,
         }
 
     @classmethod
@@ -151,4 +196,5 @@ class Worker:
             name=data.get("name", ""),
             level=data.get("level", 1),
             assigned_to=data.get("assigned_to"),
+            rounds_in_assignment=data.get("rounds_in_assignment", 0),
         )

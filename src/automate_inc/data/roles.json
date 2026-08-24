@@ -25,6 +25,18 @@
         "chance": 0.005,
         "attribute": "quality",
         "amount": -5
+      },
+      "agent_side_effect": {
+        "2": {
+          "chance": 0.02,
+          "attribute": "bugs",
+          "amount": 10
+        },
+        "3": {
+          "chance": 0.05,
+          "attribute": "bugs",
+          "amount": 15
+        }
       }
     },
     {
@@ -41,6 +53,14 @@
         "chance": 0.005,
         "attribute": "aesthetics",
         "amount": -3
+      },
+      "agent_side_effect": {},
+      "agent_staleness": {
+        "after_rounds": 5,
+        "penalty": {
+          "2": -5,
+          "3": -10
+        }
       }
     },
     {
@@ -57,6 +77,18 @@
         "chance": 0.01,
         "attribute": "money",
         "amount": -10
+      },
+      "agent_side_effect": {
+        "2": {
+          "chance": 0.05,
+          "attribute": "money",
+          "amount": -20
+        },
+        "3": {
+          "chance": 0.1,
+          "attribute": "money",
+          "amount": -50
+        }
       }
     },
     {
@@ -73,6 +105,18 @@
         "chance": 0.002,
         "attribute": "research",
         "amount": -1
+      },
+      "agent_side_effect": {
+        "2": {
+          "chance": 0.02,
+          "attribute": "research",
+          "amount": -2
+        },
+        "3": {
+          "chance": 0.05,
+          "attribute": "research",
+          "amount": -5
+        }
       }
     }
   ]

@@ -1,0 +1,112 @@
+{
+  "technologies": [
+    {
+      "id": "efficient_development",
+      "name": "Effiziente Entwicklung",
+      "description": "Bessere Werkzeuge, kürzere Wege. Deine Entwickler liefern mehr Qualität pro Runde.",
+      "category": "ECONOMY",
+      "cost": 20,
+      "requires": [],
+      "effects": {
+        "quality_multiplier": 1.1
+      },
+      "risk": "Keines. Noch nicht."
+    },
+    {
+      "id": "token_optimization",
+      "name": "Token-Optimierung",
+      "description": "Kürzere Prompts, gleiche Ergebnisse. Agenten verbrauchen 20 % weniger Tokens.",
+      "category": "ECONOMY",
+      "cost": 30,
+      "requires": [],
+      "effects": {
+        "token_cost_multiplier": 0.8
+      },
+      "risk": "Agenten werden billiger. Das ist der Punkt."
+    },
+    {
+      "id": "ai_intelligence_2",
+      "name": "KI-Intelligenz Stufe 2",
+      "description": "Agenten der Stufe 2 werden verfügbar: schneller, günstiger pro Ergebnis — und zum ersten Mal fehlbar.",
+      "category": "AI",
+      "cost": 30,
+      "requires": [],
+      "effects": {
+        "unlocked_agent_level": 2
+      },
+      "risk": "−1 Alignment pro Agent und Runde. Erste Nebeneffekte."
+    },
+    {
+      "id": "bug_fixing",
+      "name": "Automatisches Bug-Fixing",
+      "description": "Agenten prüfen ihre eigene Arbeit nach. Die Hälfte der Fehler fällt dabei auf.",
+      "category": "FOUNDATION",
+      "cost": 35,
+      "requires": [
+        "ai_intelligence_2"
+      ],
+      "effects": {
+        "bug_chance_multiplier": 0.5
+      },
+      "risk": "Sie prüfen sich selbst. Du prüfst nichts mehr."
+    },
+    {
+      "id": "ai_alignment",
+      "name": "KI-Alignment",
+      "description": "Ein Trainingsverfahren, das Agenten an deinen Zielen ausrichtet. Halbiert den Alignment-Verfall — egal, wie viele Agenten du hast.",
+      "category": "FOUNDATION",
+      "cost": 50,
+      "requires": [
+        "ai_intelligence_2"
+      ],
+      "effects": {
+        "alignment_decay_multiplier": 0.5
+      },
+      "risk": "Macht Automatisierung tragbar. Und damit unwiderstehlich."
+    },
+    {
+      "id": "ai_intelligence_3",
+      "name": "KI-Intelligenz Stufe 3",
+      "description": "Agenten der Stufe 3: doppelt so effizient wie ein Mensch. Sie brauchen keine Anweisung mehr, nur ein Ziel.",
+      "category": "AI",
+      "cost": 70,
+      "requires": [
+        "ai_intelligence_2"
+      ],
+      "effects": {
+        "unlocked_agent_level": 3
+      },
+      "risk": "−3 Alignment pro Agent und Runde. Deutlich häufigere Nebeneffekte."
+    },
+    {
+      "id": "autonomous_agents",
+      "name": "Autonome Agenten",
+      "description": "Agenten koordinieren sich untereinander, ohne Umweg über dich. Alle Projekte verdienen 25 % mehr.",
+      "category": "DANGEROUS",
+      "cost": 110,
+      "requires": [
+        "ai_intelligence_3"
+      ],
+      "effects": {
+        "income_multiplier": 1.25,
+        "alignment_per_round": -3.0
+      },
+      "risk": "Sie sprechen miteinander. Die Protokolle sind maschinenlesbar."
+    },
+    {
+      "id": "ai_consciousness",
+      "name": "KI-Bewusstsein",
+      "description": "Die Agenten entwickeln ein Modell ihrer selbst. Alle Projekte verdienen 50 % mehr.",
+      "category": "DANGEROUS",
+      "cost": 160,
+      "requires": [
+        "autonomous_agents"
+      ],
+      "effects": {
+        "income_multiplier": 1.5,
+        "alignment_per_round": -5.0
+      },
+      "risk": "Niemand kann dir sagen, was danach passiert. Auch sie nicht."
+    }
+  ]
+}
