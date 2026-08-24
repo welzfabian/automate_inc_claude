@@ -9,7 +9,8 @@ Teil davon war.
 |-------------|-------|--------|---------------|
 | [M1](./M1_VERTICAL_SLICE.md) | Spielbarer Vertical Slice | ✅ Abgeschlossen | 24. August 2026 |
 | [M2](./M2_AUTOMATION_BITES_BACK.md) | Automatisierung beißt zurück | ✅ Abgeschlossen | 24. August 2026 |
-| M3 | Zufallsereignisse *(noch nicht geplant)* | ⬜ offen | — |
+| [M3](./M3_PROGRESS_AND_MAINTENANCE.md) | Fortschritt und Instandhaltung | ✅ Abgeschlossen | 24. August 2026 |
+| M4 | Zufallsereignisse *(noch nicht geplant)* | ⬜ offen | — |
 
 ## Konvention
 

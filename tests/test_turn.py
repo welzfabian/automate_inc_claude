@@ -86,19 +86,96 @@ def test_actions_are_refused_once_the_game_is_over():
     assert not game.buy_tokens(5).ok
 
 
-def test_phases_follow_the_turn_counter():
-    assert Phase.for_turn(0) is Phase.BUILDUP
-    assert Phase.for_turn(4) is Phase.BUILDUP
-    assert Phase.for_turn(5) is Phase.SCALING
-    assert Phase.for_turn(9) is Phase.SCALING
-    assert Phase.for_turn(10) is Phase.AUTONOMY
+def test_a_new_company_is_in_the_buildup_phase():
+    assert Game(seed=1).phase is Phase.BUILDUP
+
+
+def test_turns_alone_never_change_the_phase():
+    """The phase describes what you did, not how long you took."""
+    game = Game(seed=1)
+    game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN)
+    for _ in range(15):
+        game.resolve_turn()
+    assert game.phase is Phase.BUILDUP
+
+
+def test_researching_agent_level_two_starts_the_scaling_phase():
+    game = Game(seed=1)
+    game.state.research = 500
+    assert game.research("ai_intelligence_2").ok
+    assert game.phase is Phase.SCALING
+
+
+def test_enough_agents_scale_the_company_without_any_research():
+    """Three agents is scaling - as long as there are still people around them."""
+    game = Game(seed=1)
+    for _ in range(3):
+        game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN)
+        game.hire_worker(Role.DEVELOPER, WorkerType.AGENT)
+    assert game.phase is Phase.SCALING
+
+
+def test_agents_outnumbering_humans_means_autonomy():
+    game = Game(seed=1)
+    game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN)
+    for _ in range(6):
+        game.hire_worker(Role.DEVELOPER, WorkerType.AGENT)
+    assert game.phase is Phase.AUTONOMY
+
+
+def test_a_single_agent_in_an_empty_company_is_not_autonomy():
+    """Outnumbering only counts once there is a fleet to outnumber with."""
+    game = Game(seed=1)
+    game.hire_worker(Role.DEVELOPER, WorkerType.AGENT)
+    assert game.phase is Phase.BUILDUP
+
+
+def test_a_small_agent_team_beside_a_founder_is_only_scaling():
+    """Three agents and one human is a lean company, not an autonomous one."""
+    game = Game(seed=1)
+    game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN)
+    for _ in range(3):
+        game.hire_worker(Role.DEVELOPER, WorkerType.AGENT)
+    assert game.phase is Phase.SCALING
+
+
+def test_falling_alignment_alone_means_autonomy():
+    game = Game(seed=1)
+    game.state.alignment = 40.0
+    assert game.phase is Phase.AUTONOMY
+
+
+def scaled_company(seed=1) -> Game:
+    """Three agents and three humans: scaling, but not yet outnumbered."""
+    game = Game(seed=seed)
+    for _ in range(3):
+        game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN)
+        game.hire_worker(Role.DEVELOPER, WorkerType.AGENT)
+    return game
+
+
+def test_the_phase_falls_back_when_the_agents_are_fired():
+    """Deliberate: the phase is recomputed, never remembered."""
+    game = scaled_company()
+    assert game.phase is Phase.SCALING
+    for worker in [w for w in game.state.workers if not w.is_human]:
+        game.fire_worker(worker.id)
+    assert game.phase is Phase.BUILDUP
 
 
 def test_phase_change_is_reported():
-    game = Game(seed=1)
-    game.state.turn = 4
+    game = scaled_company()
     report = game.resolve_turn()
     assert any("Skalierung" in event for event in report.events)
+
+
+def test_falling_back_a_phase_reads_differently_from_advancing():
+    game = scaled_company()
+    game.resolve_turn()
+    for worker in [w for w in game.state.workers if not w.is_human]:
+        game.fire_worker(worker.id)
+    report = game.resolve_turn()
+    assert any("Zurück in Phase" in event for event in report.events)
 
 
 def test_turn_resolution_is_deterministic_for_a_given_seed():

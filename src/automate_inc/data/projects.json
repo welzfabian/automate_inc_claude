@@ -1,45 +1,65 @@
 {
-  "_balancing": "base_income ist gegenüber PROJECTS_AND_PRODUCTS_SPEC.md 3.2 angehoben. Die Spec-Werte liegen unter den Worker-Kosten derselben Spec (6.2), jede Besetzung wäre defizitär. Zielvorgabe ist VISION.md: ein rein menschliches Team macht kleinen Gewinn (~+20 EUR/Runde pro Projekt), ein Agenten-Team ein Vielfaches.",
+  "tuning": {
+    "progress_start": 25,
+    "progress_build_rate": 34,
+    "progress_neglect_rate": 15,
+    "attribute_start": 50,
+    "attribute_cap_base": 50,
+    "attribute_entropy": 5,
+    "sales_visibility_bonus": 25
+  },
   "projects": [
     {
       "id": "static_website",
       "name": "Statische Website",
       "description": "Einfache Website für einen kleinen Kunden. Niemand wird sie je besuchen.",
       "project_type": "WEBSITE",
-      "required_roles": { "DEVELOPER": 1 },
-      "base_income": 100,
+      "required_roles": {
+        "DEVELOPER": 1
+      },
+      "base_income": 108,
       "basis_fixed_costs": 0,
-      "lifetime": 20
+      "lifetime": 10
     },
     {
       "id": "ecommerce_shop",
       "name": "E-Commerce-Shop",
       "description": "Ein Onlineshop mit Warenkorb, Checkout und drei Produkten.",
       "project_type": "ECOMMERCE",
-      "required_roles": { "DEVELOPER": 1, "DESIGNER": 1 },
-      "base_income": 170,
+      "required_roles": {
+        "DEVELOPER": 1,
+        "DESIGNER": 1
+      },
+      "base_income": 208,
       "basis_fixed_costs": 0,
-      "lifetime": 15
+      "lifetime": 16
     },
     {
       "id": "mobile_app",
       "name": "Kunden-App",
       "description": "Eine App, die der Kunde für unverzichtbar hält. Der Markt nicht.",
       "project_type": "MOBILE_APP",
-      "required_roles": { "DEVELOPER": 1, "DESIGNER": 1, "SALES": 1 },
-      "base_income": 220,
+      "required_roles": {
+        "DEVELOPER": 1,
+        "DESIGNER": 1,
+        "SALES": 1
+      },
+      "base_income": 246,
       "basis_fixed_costs": 10,
-      "lifetime": 15
+      "lifetime": 22
     },
     {
       "id": "web_app",
       "name": "Web-App mit Backend",
       "description": "Eine echte Anwendung. Mit Datenbank. Und Tickets.",
       "project_type": "WEB_APP",
-      "required_roles": { "DEVELOPER": 2, "DESIGNER": 1 },
-      "base_income": 270,
+      "required_roles": {
+        "DEVELOPER": 2,
+        "DESIGNER": 1
+      },
+      "base_income": 337,
       "basis_fixed_costs": 20,
-      "lifetime": 12
+      "lifetime": 22
     }
   ]
 }

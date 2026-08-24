@@ -120,6 +120,11 @@ class Game:
         return None
 
     @property
+    def phase(self) -> Phase:
+        """The phase, derived from research and the shape of the workforce."""
+        return self.state.phase(self.modifiers.unlocked_agent_level)
+
+    @property
     def modifiers(self) -> Modifiers:
         """Everything researched, folded into one value object.
 
@@ -353,11 +358,11 @@ class Game:
     def resolve_turn(self) -> TurnReport:
         report = TurnReport(turn=self.state.turn, money_before=self.state.money)
         rng = self._turn_rng()
-        phase_before = self.state.phase
         # Aggregated once so every step of this turn sees the same tech state,
         # even if a later step were to change what is researched.
         modifiers = self.modifiers
 
+        self._advance_progress()
         self._apply_worker_effects(modifiers)
         self._apply_side_effects(report, rng, modifiers)
         self._update_alignment(report, modifiers)
@@ -370,10 +375,7 @@ class Game:
         self._advance_projects(report)
 
         self.state.turn += 1
-        if self.state.phase is not phase_before:
-            report.events.append(
-                S.PHASE_CHANGED.format(phase=S.PHASE_NAMES[self.state.phase.value])
-            )
+        self._report_phase(report)
         self._check_game_over(report)
 
         report.money_after = self.state.money
@@ -381,25 +383,37 @@ class Game:
         return report
 
     def _apply_worker_effects(self, modifiers: Modifiers) -> None:
+        """Research is produced by people; project attributes belong to projects.
+
+        Attributes are driven per project rather than per worker because their
+        ceiling depends on how many posts are filled - a question only the project
+        can answer.
+        """
         for worker in self.state.workers:
             effect = load_roles().spec(worker.role).effect
-            amount = effect.amount * worker.efficiency
-            if effect.attribute == "quality":
-                # "Efficient development" makes the people who build quality
-                # better at it - it is not a flat income bonus.
-                amount *= modifiers.quality_multiplier
             if effect.attribute == "research":
                 # Researchers work for the company, not for a single project.
-                self.state.research += int(round(amount))
-                continue
-            if worker.assigned_to is None:
-                continue
-            project = self.state.project(worker.assigned_to)
-            if project is None:
-                continue
-            if effect.attribute in ("quality", "aesthetics", "bugs"):
-                project.adjust(effect.attribute, amount)
-            # income_bonus_pct (sales) is applied in the income formula via visibility.
+                self.state.research += int(round(effect.amount * worker.efficiency))
+
+        for project in self.state.active_projects:
+            for role in project.required_roles:
+                attribute = economy.ROLE_ATTRIBUTES.get(role)
+                if attribute is None:
+                    # Sales holds no attribute; it pays off through visibility.
+                    continue
+                delta = economy.attribute_delta(
+                    project,
+                    self.state.workers,
+                    role,
+                    load_roles().spec(role).effect.amount,
+                    modifiers,
+                )
+                project.adjust(attribute, delta)
+
+    def _advance_progress(self) -> None:
+        """A project only earns what has actually been built."""
+        for project in self.state.active_projects:
+            project.adjust("progress", economy.progress_delta(project, self.state.workers))
 
     def _apply_side_effects(
         self, report: TurnReport, rng: random.Random, modifiers: Modifiers
@@ -508,12 +522,34 @@ class Game:
                 surviving.append(project)
         self.state.active_projects = surviving
 
+    def _report_phase(self, report: TurnReport) -> None:
+        """Announce the phase if it has moved since the last turn.
+
+        Compared against what was last announced rather than against the phase at
+        the start of this turn: hiring and research change the phase between turns.
+        """
+        phase = self.phase
+        announced = Phase(self.state.phase_announced)
+        if phase is announced:
+            return
+        template = (
+            S.PHASE_CHANGED
+            if PHASE_ORDER.index(phase) > PHASE_ORDER.index(announced)
+            else S.PHASE_REGRESSED
+        )
+        report.events.append(template.format(phase=S.PHASE_NAMES[phase.value]))
+        self.state.phase_announced = phase.value
+
     def _check_game_over(self, report: TurnReport) -> None:
         for condition in END_CONDITIONS:
             if condition.triggered(self.state):
                 self.state.game_over_reason = condition.message.format(turn=self.state.turn)
                 report.events.append(self.state.game_over_reason)
                 return
+
+
+PHASE_ORDER = (Phase.BUILDUP, Phase.SCALING, Phase.AUTONOMY)
+"""Only used to tell advancing from falling back, so the message fits."""
 
 
 ALIGNMENT_TIERS = (80.0, 40.0, MISALIGNMENT_THRESHOLD)

@@ -10,7 +10,7 @@ from pathlib import Path
 from automate_inc.core.projects import Project
 from automate_inc.core.workers import Worker
 
-SAVE_FORMAT_VERSION = 2
+SAVE_FORMAT_VERSION = 3
 
 START_MONEY = 1000.0
 START_TOKENS = 50.0
@@ -26,13 +26,18 @@ class Phase(str, Enum):
     SCALING = "SCALING"
     AUTONOMY = "AUTONOMY"
 
-    @classmethod
-    def for_turn(cls, turn: int) -> Phase:
-        if turn < 5:
-            return cls.BUILDUP
-        if turn < 10:
-            return cls.SCALING
-        return cls.AUTONOMY
+
+SCALING_AGENT_COUNT = 3
+"""Enough agents to count as scaling even without any research."""
+
+AUTONOMY_AGENT_COUNT = 6
+"""A fleet this size that outnumbers the humans runs the company, not you.
+
+Deliberately twice the scaling count: three agents beside one founder is a small
+company being efficient, not an autonomous one."""
+
+AUTONOMY_ALIGNMENT = 50.0
+"""Below this the company is in the autonomy phase whatever else is true."""
 
 
 @dataclass
@@ -44,15 +49,36 @@ class GameState:
     alignment: float = START_ALIGNMENT
     turn: int = 0
     researched: list[str] = field(default_factory=list)
+    phase_announced: str = Phase.BUILDUP.value
+    """The phase last reported to the player.
+
+    The phase itself is always derived, never stored - but it now changes the
+    moment you hire or research, not at end of turn. Remembering what was last
+    announced is what still lets the turn report mention it."""
     workers: list[Worker] = field(default_factory=list)
     active_projects: list[Project] = field(default_factory=list)
     rng_seed: int = 0
     log: list[str] = field(default_factory=list)
     game_over_reason: str | None = None
 
-    @property
-    def phase(self) -> Phase:
-        return Phase.for_turn(self.turn)
+    def phase(self, unlocked_agent_level: int = 1) -> Phase:
+        """Which phase the company is in, derived from what the player has done.
+
+        Not from the turn number: the game says "scaling" because you scaled.
+        The research signal is read from ``Modifiers`` rather than from technology
+        IDs, so the engine still knows nothing about individual technologies.
+
+        Deliberately recomputed on every call and allowed to fall back - firing
+        your agents really does take the company out of autonomy.
+        """
+        agents = [w for w in self.workers if not w.is_human]
+        humans = [w for w in self.workers if w.is_human]
+        outnumbered = len(agents) >= AUTONOMY_AGENT_COUNT and len(agents) > len(humans)
+        if unlocked_agent_level >= 3 or outnumbered or self.alignment < AUTONOMY_ALIGNMENT:
+            return Phase.AUTONOMY
+        if unlocked_agent_level >= 2 or len(agents) >= SCALING_AGENT_COUNT:
+            return Phase.SCALING
+        return Phase.BUILDUP
 
     @property
     def is_over(self) -> bool:
@@ -84,6 +110,7 @@ class GameState:
             "alignment": self.alignment,
             "turn": self.turn,
             "researched": list(self.researched),
+            "phase_announced": self.phase_announced,
             "workers": [w.to_dict() for w in self.workers],
             "active_projects": [p.to_dict() for p in self.active_projects],
             "rng_seed": self.rng_seed,
@@ -104,6 +131,7 @@ class GameState:
             alignment=data["alignment"],
             turn=data["turn"],
             researched=list(data["researched"]),
+            phase_announced=data["phase_announced"],
             workers=[Worker.from_dict(w) for w in data["workers"]],
             active_projects=[Project.from_dict(p) for p in data["active_projects"]],
             rng_seed=data["rng_seed"],

@@ -73,6 +73,7 @@ PROJECT_EXPIRED = "Projekt „{name}“ ist ausgelaufen. Der Kunde bedankt sich 
 TOKEN_PRICE_CHANGED = "Token-Preis: {old:.2f} € → {new:.2f} €"
 ALIGNMENT_CHANGED = "Alignment: {delta:+.0f} → {value:.0f}"
 PHASE_CHANGED = "Neue Phase: {phase}"
+PHASE_REGRESSED = "Zurück in Phase {phase}. Die Firma ist wieder kleiner als ihr Anspruch."
 
 HUMAN_ERROR_QUALITY = "{worker} hat einen Tippfehler übersehen. Qualität von „{project}“ sinkt."
 HUMAN_ERROR_AESTHETICS = "{worker} hat die Markenfarbe verwechselt. Ästhetik von „{project}“ sinkt."
@@ -160,6 +161,7 @@ RESEARCH_DONE_HEADER = "Erforscht"
 RESEARCH_EMPTY_AVAILABLE = "Nichts verfügbar. Sammle Research Points."
 RESEARCH_LOCKED_HINT = "braucht {missing}"
 COL_ALIGNMENT_BALANCE = "Alignment-Bilanz"
+COL_PROGRESS = "Fortschritt"
 COL_QUALITY = "Qualität"
 COL_AESTHETICS = "Ästhetik"
 COL_BUGS = "Bugs"
@@ -171,6 +173,10 @@ COL_COST = "Kosten"
 COL_ASSIGNMENT = "Zuweisung"
 UNASSIGNED = "—"
 EMPTY_PROJECTS = "Noch keine Projekte. Ohne Projekte kein Umsatz."
+HINT_UNSTAFFED = (
+    "Ein Projekt ohne Team fällt zurück und bringt nichts ein. "
+    "Unbesetzte Stellen deckeln außerdem, wie gut es überhaupt werden kann."
+)
 EMPTY_TEAM = "Noch niemand eingestellt. Du bist ganz allein."
 
 # Random German first names for human workers, so the team feels like people.

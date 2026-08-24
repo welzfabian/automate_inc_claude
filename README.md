@@ -62,6 +62,11 @@ Projekttypen, Rundenabrechnung, Token-Markt, Speichern/Laden, Bankrott.
 mit acht Technologien, Agenten der Stufen 2 und 3 samt Nebeneffekten, Alignment als
 lebende Mechanik — und der Kontrollverlust als zweites Spielende.
 
+**Meilenstein 3 ([abgeschlossen](docs/milestones/M3_PROGRESS_AND_MAINTENANCE.md)):**
+Projekte werden zu Investitionen mit laufender Instandhaltung — Baufortschritt,
+Attribut-Deckel nach Besetzung, Projektgröße bestimmt Ertrag und Laufzeit, und die
+Spielphasen richten sich nach dem, was der Spieler getan hat, statt nach der Rundenzahl.
+
 **Geplant:** Zufallsereignisse, Produkte und Upgrades, externe Druckereignisse
 (Investoren, Privatleben, Markt), HR-Rolle — und der Twist.
 

@@ -5,12 +5,16 @@ from __future__ import annotations
 import random
 from collections.abc import Iterable
 
-from automate_inc.core.projects import Project
+from automate_inc.core.projects import Project, load_tuning
 from automate_inc.core.tech import Modifiers
 from automate_inc.core.workers import Cost, Role, Worker, load_roles
 
 NO_MODIFIERS = Modifiers()
 """Neutral modifiers, so every function here stays callable without a tech tree."""
+
+ROLE_ATTRIBUTES = {Role.DEVELOPER: "quality", Role.DESIGNER: "aesthetics"}
+"""Which role holds which project attribute - and therefore caps it. Sales holds
+none: leaving that post empty costs the visibility bonus, which is punishment enough."""
 
 TOKEN_PRICE_SWING = 0.10
 """Random price movement per round, +/- 10% (VISION.md, "Dynamische Token-Wirtschaft")."""
@@ -18,12 +22,9 @@ TOKEN_PRICE_SWING = 0.10
 TOKEN_PRICE_INFLATION = 1.01
 """Long-term upward drift. Tokens get more expensive the longer you rely on them."""
 
-SALES_VISIBILITY_BONUS = 10.0
-"""Percentage points of visibility each assigned sales worker adds to a project."""
-
-
 def calculate_income(
     base_income: float,
+    progress: float,
     quality: float,
     aesthetics: float,
     bugs: float,
@@ -33,17 +34,69 @@ def calculate_income(
 ) -> float:
     """Income per round (PROJECTS_AND_PRODUCTS_SPEC.md 6.1).
 
-    ``aesthetics_applies`` is the one deviation from the written formula: a project
-    that never asked for a designer is not punished for having no aesthetics.
+    Two deviations from the written formula. ``aesthetics_applies``: a project that
+    never asked for a designer is not punished for having no aesthetics. And
+    ``progress``: an unbuilt project earns nothing, however good its attributes
+    look - that is what stops an unstaffed project from being free money.
     """
     aesthetics_factor = (aesthetics / 100.0) if aesthetics_applies else 1.0
     return (
         base_income
+        * (progress / 100.0)
         * (quality / 100.0)
         * aesthetics_factor
         * ((100.0 - bugs) / 100.0)
         * ((100.0 + visibility_bonus) / 100.0)
     )
+
+
+def progress_delta(project: Project, workers: Iterable[Worker]) -> float:
+    """How far a project moves toward being finished this round.
+
+    Staffed projects advance in proportion to how many of their posts are filled,
+    weighted by efficiency. Only a completely abandoned project falls back: partial
+    staffing is punished through the attribute caps instead. Making it lose progress
+    too would let a one-third staffed project stall below 100 forever - a trap the
+    player cannot read in advance.
+    """
+    tuning = load_tuning()
+    assigned = [w for w in workers if w.assigned_to == project.id]
+    if not assigned:
+        return -tuning.progress_neglect_rate
+    slots = sum(project.required_roles.values())
+    return tuning.progress_build_rate * sum(w.efficiency for w in assigned) / slots
+
+
+def attribute_cap(project: Project, workers: Iterable[Worker], role: Role) -> float:
+    """The ceiling this project's staffing puts on the role's attribute."""
+    required = project.required_roles[role]
+    filled = sum(1 for w in workers if w.assigned_to == project.id and w.role is role)
+    return load_tuning().cap(min(filled, required), required)
+
+
+def attribute_delta(
+    project: Project,
+    workers: Iterable[Worker],
+    role: Role,
+    effect_amount: float,
+    modifiers: Modifiers = NO_MODIFIERS,
+) -> float:
+    """How far a role's attribute moves this round: up toward its cap, or down to it.
+
+    Above the cap it decays, once per unfilled post - so a project that loses half
+    its team slides to what half a team can hold, and no further.
+    """
+    tuning = load_tuning()
+    required = project.required_roles[role]
+    assigned = [w for w in workers if w.assigned_to == project.id and w.role is role]
+    cap = attribute_cap(project, workers, role)
+    current = getattr(project, ROLE_ATTRIBUTES[role])
+    if current > cap:
+        return max(cap - current, -tuning.attribute_entropy * (required - len(assigned)))
+    gain = sum(effect_amount * w.efficiency for w in assigned)
+    if role is Role.DEVELOPER:
+        gain *= modifiers.quality_multiplier
+    return min(cap - current, gain)
 
 
 def visibility_bonus_for(project: Project, workers: Iterable[Worker]) -> float:
@@ -58,7 +111,7 @@ def visibility_bonus_for(project: Project, workers: Iterable[Worker]) -> float:
         if worker.assigned_to != project.id:
             continue
         if worker.role is Role.SALES:
-            bonus += SALES_VISIBILITY_BONUS * worker.efficiency
+            bonus += load_tuning().sales_visibility_bonus * worker.efficiency
             continue
         staleness = catalog.spec(worker.role).agent_staleness
         if staleness is not None and not worker.is_human:
@@ -74,6 +127,7 @@ def project_income(
     workers = list(workers)
     return calculate_income(
         base_income=project.base_income,
+        progress=project.progress,
         quality=project.quality,
         aesthetics=project.aesthetics,
         bugs=project.bugs,

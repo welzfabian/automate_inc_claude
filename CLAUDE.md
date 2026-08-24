@@ -53,6 +53,17 @@ questions instead of checking technology IDs. A new technology that reuses an ex
 modifier field is pure configuration in `data/technologies.json`; a new field needs an
 entry in the `AGGREGATION` table (max / multiplicative / additive) and nothing else.
 
+**A project earns only what has been built.** `Project.progress` (0-100) scales income,
+and the staffing of a project caps how high its attributes can climb
+(`economy.attribute_cap`). Both exist because an unstaffed project used to be the most
+profitable staffing there is (`BALANCING.md` 11-12). When touching the income formula,
+keep the property that full staffing beats every partial staffing - it is parametrised
+over every project in `tests/test_progress.py`.
+
+**Phases are derived, never stored.** `GameState.phase()` reads research (through
+`Modifiers`, never technology IDs) and the shape of the workforce, and it may fall back.
+`phase_announced` only remembers what was last reported to the player.
+
 **Alignment is deterministic.** `economy.alignment_delta()` derives it from agent levels,
 human headcount and research — no RNG (`BALANCING.md` 8). The player has to be able to
 read the balance before deciding, which is why the dashboard shows it as `(±n/Runde)`.
@@ -60,11 +71,14 @@ read the balance before deciding, which is why the dashboard shows it as `(±n/R
 ## Balancing data is not in code
 
 All tunable numbers live in `src/automate_inc/data/*.json` (`projects.json`,
-`roles.json`). Adding a project or changing a cost must not require a code change.
+`roles.json`, `technologies.json`). Adding a project or changing a cost must not require a
+code change. The `tuning` block at the top of `projects.json` holds the project mechanics
+(build rate, neglect, attribute cap base, entropy, sales visibility); read it through
+`projects.load_tuning()`.
 
 **The spec documents in `docs/` are the original design, not the current truth.** Their
 numbers made every staffing option run at a loss, and their income formula zeroed any
-project without a designer. `docs/BALANCING.md` records all six deviations and why.
+project without a designer. `docs/BALANCING.md` records every deviation and why.
 When docs and `data/*.json` disagree, the JSON wins — and any new deviation goes into
 `BALANCING.md`.
 

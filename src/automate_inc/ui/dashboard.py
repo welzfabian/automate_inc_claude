@@ -39,6 +39,27 @@ PHASE_STYLES = {
 AGENT_SYMBOL = "🤖"
 HUMAN_SYMBOL = "🧑"
 
+PROGRESS_WIDTH = 8
+
+
+def progress_bar(project) -> Text:
+    """A bar plus the number - the bar for the glance, the number for the decision."""
+    filled = int(round(project.progress / 100 * PROGRESS_WIDTH))
+    style = "green" if project.is_complete else "yellow"
+    return Text.assemble(
+        ("▓" * filled + "░" * (PROGRESS_WIDTH - filled), style),
+        (f" {project.progress:3.0f}%", "dim"),
+    )
+
+
+def capped_attribute(project, workers, role: Role) -> Text:
+    """Show the value, and the ceiling its staffing imposes when one is binding."""
+    value = getattr(project, economy.ROLE_ATTRIBUTES[role])
+    cap = economy.attribute_cap(project, workers, role)
+    if cap >= 100:
+        return Text(f"{value:.0f}")
+    return Text.assemble((f"{value:.0f}", ""), (f"/{cap:.0f}", "dim red"))
+
 
 def money_style(amount: float) -> str:
     return "green" if amount >= 0 else "bold red"
@@ -56,14 +77,15 @@ def alignment_style(value: float) -> str:
 
 def header(game: Game) -> RenderableType:
     state = game.state
-    phase_style = PHASE_STYLES[state.phase]
+    phase = game.phase
+    phase_style = PHASE_STYLES[phase]
     delta = economy.alignment_delta(state.workers, game.modifiers)
     title = Text.assemble(
         (S.TITLE, "bold"),
         ("  ──  ", "dim"),
         (f"Runde {state.turn}", ""),
         ("  ──  ", "dim"),
-        (S.PHASE_NAMES[state.phase.value], phase_style),
+        (S.PHASE_NAMES[phase.value], phase_style),
     )
     resources = Text.assemble(
         ("€ ", "dim"),
@@ -88,6 +110,7 @@ def projects_table(game: Game) -> RenderableType:
     table = Table(expand=True, header_style="dim", box=None, pad_edge=False)
     table.add_column("#", width=3)
     table.add_column("Projekt")
+    table.add_column(S.COL_PROGRESS, justify="left", width=14)
     table.add_column(S.COL_QUALITY, justify="right", width=9)
     table.add_column(S.COL_AESTHETICS, justify="right", width=9)
     table.add_column(S.COL_BUGS, justify="right", width=6)
@@ -104,8 +127,11 @@ def projects_table(game: Game) -> RenderableType:
         table.add_row(
             str(index),
             project.name,
-            f"{project.quality:.0f}",
-            f"{project.aesthetics:.0f}" if project.requires(Role.DESIGNER) else "—",
+            progress_bar(project),
+            capped_attribute(project, state.workers, Role.DEVELOPER),
+            capped_attribute(project, state.workers, Role.DESIGNER)
+            if project.requires(Role.DESIGNER)
+            else Text("—", style="dim"),
             f"{project.bugs:.0f}",
             Text(f"{staffed}/{needed}", style="green" if staffed >= needed else "yellow"),
             f"{project.rounds_left}",

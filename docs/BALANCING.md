@@ -30,6 +30,12 @@ dauerhaft 0 €.
 Projekte starten außerdem mit `quality = 50`, `aesthetics = 50`, `bugs = 0` statt bei 0,
 damit sie ab der ersten Runde etwas einbringen. Alle Attribute sind auf 0–100 geklemmt.
 
+> **Revidiert in M3.** Die Startwerte 50 bleiben, aber die Begründung war nur die halbe
+> Wahrheit: Sie mussten in M1 zwei Fragen gleichzeitig beantworten — *wie gut ist das
+> Ding* und *existiert es überhaupt schon*. Die zweite Frage beantwortet seit M3
+> `Project.progress`. Deshalb war ein unbesetztes Projekt in M1 und M2 die profitabelste
+> Besetzung überhaupt (siehe Nr. 11).
+
 ## 3. Tokens sind kaufbar
 
 Agenten kosten Tokens pro Runde, der Startvorrat ist 50, ein Nachkaufweg fehlte in den
@@ -146,3 +152,128 @@ Das ist die beabsichtigte Kurve: Agenten der Stufe 1 sind alignment-neutral und 
 ein tragfähiges Dauerangebot; die Stufen 2 und 3 lohnen sich sofort sichtbar und kosten
 erst mit Verzögerung. Das Misalignment-Ende ist **erreichbar, ohne unausweichlich zu
 sein** — genau die Bedingung aus dem M2-Plan.
+
+---
+
+# Meilenstein 3
+
+## 11. Ein unbesetztes Projekt bringt nichts mehr — `Project.progress`
+
+**Der Fehler:** In M1 und M2 war ein Projekt, an dem niemand arbeitet, die profitabelste
+Besetzung. Es brachte Einnahmen (Qualität und Ästhetik starten bei 50) und kostete kein
+Gehalt. Gemessen: einen Menschen einstellen, vier Web-Apps starten, niemanden zuweisen,
+zwanzig Runden nichts tun — **+110 €/Runde, dauerhaft, bei Alignment 100.**
+
+Das unterläuft die Prämisse des Spiels: Wenn Nichtstun profitabel ist, gibt es keinen
+Grund zu automatisieren.
+
+**Auflösung:** Ein Attribut `progress` (0–100) skaliert die Einnahmen. Startwert 25
+(„Briefing und Vertrag stehen"). Besetzte Projekte kommen voran, im Verhältnis der
+besetzten zu den geforderten Stellen und gewichtet mit der Effizienz; **komplett**
+unbesetzte fallen zurück. Dieselbe Partie ergibt jetzt −160 €/Runde und Bankrott in
+Runde 9.
+
+**Warum der Verfall nicht anteilig ist:** Erwogen und verworfen. Bei drei Stellen und
+einer Besetzung ergäbe „34 × ⅓ − 15 × ⅔" **+1,3 pro Runde** — das Projekt bliebe bei 54 %
+stehen und würde nie fertig. Eine Falle, die der Spieler vorher nicht ablesen kann, also
+derselbe Einwand wie bei Nr. 8. Teilbesetzung wird stattdessen über den Deckel bestraft
+(Nr. 12).
+
+## 12. Attribut-Deckel statt freier Attribute
+
+**Der Fehler:** Ein Entwickler bringt +20 Qualität, eine unbesetzte Stelle kostete nichts.
+Sobald **eine** Stelle einer Rolle besetzt war, waren alle weiteren wertlos: Bei der
+Web-App (zwei Entwicklerstellen) brachte „ein Entwickler + Designer" +144 €/Runde gegen
++72 € bei voller Besetzung. Dieselbe Struktur wie bei der Sales-Stelle (Nr. 13).
+
+**Auflösung:** Die Besetzung bestimmt, wie hoch ein Attribut überhaupt steigen kann:
+
+```
+Deckel = 50 + 50 × besetzte Stellen dieser Rolle / geforderte Stellen
+```
+
+Unbesetzt heißt eingefroren bei 50, halb besetzt bis 75, voll besetzt bis 100. Liegt der
+Wert über dem Deckel, sinkt er mit 5 pro unbesetzter Stelle und Runde darauf zu. Welche
+Rolle welches Attribut deckelt, steht in `roles.json` (`effect.attribute`).
+
+**Warum die Basis genau 50 ist:** Ein Attribut kann nur sinken, wenn niemand die Rolle
+besetzt — steigen kann es nur durch Worker dieser Rolle. Eine Basis über dem Startwert 50
+wäre deshalb wirkungslos, und ab 60 schlägt Teilbesetzung wieder die volle Besetzung. Der
+nutzbare Bereich ist 0–50; 50 ist das Maximum und damit die mildeste Einstellung, bei der
+volle Besetzung noch immer und überall gewinnt (durch einen Test über alle Projekte und
+alle Teilbesetzungen abgesichert).
+
+**Drei Teilbesetzungen bleiben Verlustgeschäfte**: nur Sales; Entwickler plus Sales ohne
+Designer; zwei Entwickler statt des fehlenden Designers. Alle drei sind „Gehalt für eine
+blockierte Aufstellung", in der Oberfläche ablesbar (`75/75`) und mit einer Aktion
+behebbar. Bewusst so gelassen — jede Gegenmaßnahme kippt das Verhältnis zur vollen
+Besetzung.
+
+## 13. Sichtbarkeitsbonus 10 % → 25 %
+
+**Der Fehler:** Ein Sales-Mensch kostet 60 €/Runde und brachte +10 % Sichtbarkeit — bei
+der Kunden-App rund 24 €. Die Stelle **leer zu lassen war besser, als sie zu besetzen.**
+Die `+22 €` in der Tabelle unter Nr. 5 sind damit nicht das Optimum einer Kunden-App,
+sondern eine Fehlbesetzung.
+
+**Auflösung:** 25 %. Damit lohnt sich die Stelle knapp (+72 gegen +70 €/Runde ohne sie) —
+eine Entscheidung statt einer Selbstverständlichkeit. Der Wert steht in `projects.json`
+unter `tuning`, nicht mehr als Konstante in `economy.py`.
+
+## 14. Projektgröße bestimmt Ertrag und Laufzeit
+
+**Der Fehler:** Jedes Projekt brachte mit menschlichem Team +20 €/Runde — die statische
+Website wie die Web-App. Die Projektwahl war mechanisch bedeutungslos. Dazu liefen große
+Projekte **kürzer** als kleine (Web-App 12 Runden, statische Website 20), also genau
+invertiert.
+
+**Auflösung:** Zielgröße **+20 €/Runde pro geforderter Stelle, plus 10 % Bonus je
+zusätzlicher Stelle**; Laufzeit nach Größe.
+
+| Projekt | Stellen | Laufzeit | `base_income` | Ø netto | über die Laufzeit |
+|---------|--------:|---------:|--------------:|--------:|------------------:|
+| Statische Website | 1 | 20 → **10** | 100 → **108** | +20 € | +199 € |
+| E-Commerce-Shop | 2 | 15 → **16** | 170 → **208** | +44 € | +697 € |
+| Kunden-App | 3 | 15 → **22** | 220 → **246** | +72 € | +1.573 € |
+| Web-App mit Backend | 3 | 12 → **22** | 270 → **337** | +72 € | +1.580 € |
+
+Ein Projekt ist damit eine **Investition**: Break-even in Runde 3–4, davor kostet es.
+
+Kunden-App und Web-App haben beide drei Stellen und sind dadurch wirtschaftlich fast
+identisch — die Zielgröße hängt nur an der Stellenzahl. Eine der beiden braucht künftig
+eine vierte Stelle oder eine andere Laufzeit.
+
+## 15. Phasen aus dem Zustand statt aus der Rundenzahl
+
+**Nicht in den Docs geregelt.** `Phase.for_turn()` schaltete nach 5 und 10 Runden um, ohne
+Bezug zu irgendetwas, das der Spieler getan hatte.
+
+**Auflösung:** Die Phase wird aus dem Zustand abgeleitet — Skalierung ab
+`unlocked_agent_level ≥ 2` oder drei Agenten, Autonomie ab `unlocked_agent_level ≥ 3`,
+sechs Agenten in der Überzahl oder Alignment unter 50. Die Bedingungen fragen
+**`Modifiers`, nie Technologie-IDs**; sonst bräche die Regel, dass Technologien nicht im
+Engine-Code auftauchen.
+
+Die Phase wird bei jedem Zugriff neu berechnet und **darf zurückfallen**: Wer seine
+Agenten entlässt, ist wieder im Aufbau. Weil sie sich damit beim Einstellen ändert und
+nicht beim Rundenende, merkt sich `GameState.phase_announced`, was zuletzt gemeldet wurde
+— sonst gäbe es nie wieder eine Phasenmeldung.
+
+## Was die Simulation zu M3 zeigt
+
+Über 60 Runden, ein Spieler, der zügig automatisiert und den ganzen Baum erforscht:
+
+| Strategie | Ausgang |
+|-----------|---------|
+| reine Automatisierung, 6 Forscher | Kontrollverlust Runde 52, Baum 8/8 erforscht |
+| dieselbe Strategie, mit 10 Menschen gegengesteuert | **Bankrott Runde 25** |
+
+Beides ist beabsichtigt: Automatisierung führt weiterhin in den Kontrollverlust, aber
+Menschen sind teuer genug, dass Übersteuern die Firma umbringt.
+
+**Offener Befund:** Geld ist in keiner Simulation der Engpass — der Spieler endet mit über
+30.000 € und keiner einzigen knappen Runde. Die Technologiekosten wurden deshalb
+**nicht** erhöht (die Vermutung „das Dreifache" aus dem M3-Plan war falsch: schon bei den
+bestehenden Kosten liegt Stufe 2 bei Runde 7–10 und Stufe 3 bei Runde 17–23, begrenzt
+durch die Forscherzahl, nicht durch das Budget). Was fehlt, ist eine **Geldsenke** —
+ein Thema für einen späteren Meilenstein, nicht für aufgeblähte Forschungskosten.

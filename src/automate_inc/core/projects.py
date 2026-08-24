@@ -10,14 +10,34 @@ from importlib import resources
 
 from automate_inc.core.workers import Role
 
-# New projects do not start at zero: a freshly delivered project is mediocre,
-# not worthless. Starting at 0 quality would mean 0 income forever.
-INITIAL_QUALITY = 50.0
-INITIAL_AESTHETICS = 50.0
-INITIAL_BUGS = 0.0
-
 ATTRIBUTE_MIN = 0.0
 ATTRIBUTE_MAX = 100.0
+
+INITIAL_BUGS = 0.0
+
+
+@dataclass(frozen=True)
+class Tuning:
+    """Balancing knobs for the project mechanics. Data, never code."""
+
+    progress_start: float
+    progress_build_rate: float
+    progress_neglect_rate: float
+    attribute_start: float
+    attribute_cap_base: float
+    attribute_entropy: float
+    sales_visibility_bonus: float
+
+    def cap(self, filled: int, required: int) -> float:
+        """How high an attribute can climb at this staffing level.
+
+        The base is what an unstaffed role decays to. It cannot usefully exceed
+        ``attribute_start``: an attribute only rises through workers of its own
+        role, so with the role unfilled a higher cap would never be reached.
+        """
+        return self.attribute_cap_base + (
+            ATTRIBUTE_MAX - self.attribute_cap_base
+        ) * filled / required
 
 
 class ProjectType(str, Enum):
@@ -56,10 +76,15 @@ class Project:
     basis_fixed_costs: int
     lifetime: int
     current_round: int = 0
-    quality: float = INITIAL_QUALITY
-    aesthetics: float = INITIAL_AESTHETICS
+    progress: float = 0.0
+    quality: float = 0.0
+    aesthetics: float = 0.0
     bugs: float = INITIAL_BUGS
     assigned_workers: list[str] = field(default_factory=list)
+
+    @property
+    def is_complete(self) -> bool:
+        return self.progress >= ATTRIBUTE_MAX
 
     @property
     def is_expired(self) -> bool:
@@ -94,6 +119,7 @@ class Project:
             "basis_fixed_costs": self.basis_fixed_costs,
             "lifetime": self.lifetime,
             "current_round": self.current_round,
+            "progress": self.progress,
             "quality": self.quality,
             "aesthetics": self.aesthetics,
             "bugs": self.bugs,
@@ -112,6 +138,7 @@ class Project:
             basis_fixed_costs=data["basis_fixed_costs"],
             lifetime=data["lifetime"],
             current_round=data["current_round"],
+            progress=data["progress"],
             quality=data["quality"],
             aesthetics=data["aesthetics"],
             bugs=data["bugs"],
@@ -151,6 +178,7 @@ class ProjectRegistry:
 
     def instantiate(self, blueprint_id: str, instance_id: str) -> Project:
         blueprint = self._blueprints[blueprint_id]
+        tuning = load_tuning()
         return Project(
             id=instance_id,
             blueprint_id=blueprint.id,
@@ -160,10 +188,21 @@ class ProjectRegistry:
             base_income=blueprint.base_income,
             basis_fixed_costs=blueprint.basis_fixed_costs,
             lifetime=blueprint.lifetime,
+            progress=tuning.progress_start,
+            quality=tuning.attribute_start,
+            aesthetics=tuning.attribute_start,
         )
+
+
+def _project_data() -> str:
+    return resources.files("automate_inc.data").joinpath("projects.json").read_text("utf-8")
 
 
 @lru_cache(maxsize=1)
 def load_registry() -> ProjectRegistry:
-    text = resources.files("automate_inc.data").joinpath("projects.json").read_text("utf-8")
-    return ProjectRegistry.from_json(text)
+    return ProjectRegistry.from_json(_project_data())
+
+
+@lru_cache(maxsize=1)
+def load_tuning() -> Tuning:
+    return Tuning(**json.loads(_project_data())["tuning"])

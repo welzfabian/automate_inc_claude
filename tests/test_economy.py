@@ -5,24 +5,41 @@ import random
 import pytest
 
 from automate_inc.core import economy
-from automate_inc.core.projects import Project, ProjectType
-from automate_inc.core.workers import Role, Worker, WorkerType
+from automate_inc.core.projects import Project, ProjectType, load_tuning
+from automate_inc.core.workers import Role, Worker, WorkerType, load_roles
 
 
 def test_spec_example_web_app_income():
-    """SPEC 6.1: 200 * 0.90 * 0.80 * 0.90 * 1.50 = 194.40"""
+    """SPEC 6.1: 200 * 0.90 * 0.80 * 0.90 * 1.50 = 194.40, on a finished project."""
     income = economy.calculate_income(
-        base_income=200, quality=90, aesthetics=80, bugs=10, visibility_bonus=50
+        base_income=200, progress=100, quality=90, aesthetics=80, bugs=10, visibility_bonus=50
     )
     assert income == pytest.approx(194.40)
 
 
 def test_spec_example_saas_income():
-    """SPEC 6.1: 200 * 0.95 * 1.00 * 1.00 * 1.30 = 247.00"""
+    """SPEC 6.1: 200 * 0.95 * 1.00 * 1.00 * 1.30 = 247.00, on a finished project."""
     income = economy.calculate_income(
-        base_income=200, quality=95, aesthetics=100, bugs=0, visibility_bonus=30
+        base_income=200, progress=100, quality=95, aesthetics=100, bugs=0, visibility_bonus=30
     )
     assert income == pytest.approx(247.00)
+
+
+def test_an_unbuilt_project_earns_nothing():
+    """The reason an unstaffed project is no longer free money."""
+    assert economy.calculate_income(
+        base_income=200, progress=0, quality=100, aesthetics=100, bugs=0, visibility_bonus=0
+    ) == 0.0
+
+
+def test_income_scales_linearly_with_progress():
+    half = economy.calculate_income(
+        base_income=200, progress=50, quality=100, aesthetics=100, bugs=0, visibility_bonus=0
+    )
+    full = economy.calculate_income(
+        base_income=200, progress=100, quality=100, aesthetics=100, bugs=0, visibility_bonus=0
+    )
+    assert half == pytest.approx(full / 2)
 
 
 def test_project_without_designer_is_not_punished_for_aesthetics():
@@ -32,10 +49,11 @@ def test_project_without_designer_is_not_punished_for_aesthetics():
     static website earns nothing forever.
     """
     with_aesthetics = economy.calculate_income(
-        base_income=100, quality=100, aesthetics=0, bugs=0, visibility_bonus=0
+        base_income=100, progress=100, quality=100, aesthetics=0, bugs=0, visibility_bonus=0
     )
     neutral = economy.calculate_income(
         base_income=100,
+        progress=100,
         quality=100,
         aesthetics=0,
         bugs=0,
@@ -47,8 +65,8 @@ def test_project_without_designer_is_not_punished_for_aesthetics():
 
 
 def test_bugs_reduce_income():
-    clean = economy.calculate_income(100, 100, 100, bugs=0, visibility_bonus=0)
-    buggy = economy.calculate_income(100, 100, 100, bugs=40, visibility_bonus=0)
+    clean = economy.calculate_income(100, 100, 100, 100, bugs=0, visibility_bonus=0)
+    buggy = economy.calculate_income(100, 100, 100, 100, bugs=40, visibility_bonus=0)
     assert buggy == pytest.approx(clean * 0.6)
 
 
@@ -96,7 +114,17 @@ def test_unassigned_workers_still_cost():
 def test_sales_worker_adds_visibility():
     project = _project(required_roles={Role.SALES: 1})
     sales = Worker(id="s1", role=Role.SALES, worker_type=WorkerType.HUMAN, assigned_to="p1")
-    assert economy.visibility_bonus_for(project, [sales]) == pytest.approx(10.0)
+    assert economy.visibility_bonus_for(project, [sales]) == pytest.approx(
+        load_tuning().sales_visibility_bonus
+    )
+
+
+def test_the_sales_post_pays_for_itself():
+    """It did not at 10 %: the salary cost more than the bonus was worth."""
+    project = _project(required_roles={Role.SALES: 1}, base_income=246, basis_fixed_costs=10)
+    sales = Worker(id="s1", role=Role.SALES, worker_type=WorkerType.HUMAN, assigned_to="p1")
+    bonus_value = project.base_income * load_tuning().sales_visibility_bonus / 100
+    assert bonus_value > load_roles().spec(Role.SALES).human_salary
 
 
 def test_token_price_stays_within_swing_and_drifts_up():
