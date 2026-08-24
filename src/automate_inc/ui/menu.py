@@ -15,6 +15,10 @@ from automate_inc.ui import dashboard
 DEFAULT_SAVE = Path("saves/savegame.json")
 
 
+class Abort(Exception):
+    """Raised when stdin closes - the player is gone, stop asking them things."""
+
+
 class Menu:
     def __init__(self, game: Game, console: Console | None = None) -> None:
         self.game = game
@@ -26,8 +30,8 @@ class Menu:
     def ask(self, prompt: str) -> str:
         try:
             return self.console.input(prompt).strip()
-        except EOFError:
-            return "q"
+        except EOFError as exc:
+            raise Abort from exc
 
     def choose(self, title: str, options: list[tuple[str, str]]) -> str | None:
         """Show a numbered list and return the chosen key, or None if cancelled."""
@@ -157,6 +161,12 @@ class Menu:
             "s": self.save,
             "l": self.load,
         }
+        try:
+            self._loop(handlers)
+        except Abort:
+            self.console.print("\n[dim]Beendet.[/dim]")
+
+    def _loop(self, handlers: dict) -> None:
         while True:
             dashboard.render(self.console, self.game)
             for message in self.pending:

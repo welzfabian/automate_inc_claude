@@ -10,12 +10,17 @@ desto schneller ersetzt die KI dich selbst.
 ## Spielen
 
 ```bash
+./start_game.sh
+```
+
+Beim ersten Start legt das Skript ein virtuelles Environment unter `.venv/` an und
+installiert die Abhängigkeiten; danach startet es das Spiel direkt. Wer das lieber
+selbst macht:
+
+```bash
 pip install -e .
 python -m automate_inc
 ```
-
-Ohne Installation genügt `PYTHONPATH=src python -m automate_inc`, sofern `rich`
-verfügbar ist.
 
 ## Entwickeln
 

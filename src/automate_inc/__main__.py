@@ -31,7 +31,10 @@ def splash(console: Console) -> None:
         "\n[dim]Du hast 1.000 €, 50 Tokens und keine Kunden. "
         "Stell jemanden ein und fang an.[/dim]\n"
     )
-    console.input(f"[dim]{S.PRESS_ENTER}[/dim] ")
+    try:
+        console.input(f"[dim]{S.PRESS_ENTER}[/dim] ")
+    except EOFError:
+        pass
 
 
 def main() -> None:
@@ -40,7 +43,7 @@ def main() -> None:
     splash(console)
     try:
         Menu(game, console).run()
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, EOFError):
         console.print("\n[dim]Beendet.[/dim]")
 
 
