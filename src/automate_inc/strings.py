@@ -47,6 +47,11 @@ ERR_NO_SENIOR_WORKER = (
     "arbeiten zuverlässig — aber niemand von ihnen übernimmt Verantwortung."
 )
 ERR_ROLE_NOT_REQUIRED = "„{project}“ hat keine Verwendung für die Rolle {role}."
+NO_PROJECT_NEEDS_ROLE = (
+    "Kein laufendes Projekt hat noch eine freie Stelle für {role}. "
+    "Starte ein passendes Projekt oder zieh jemanden ab."
+)
+PROJECT_WITH_FREE_SLOTS = "{project} — {count}× {role} gesucht"
 ERR_ROLE_SLOTS_FULL = "„{project}“ braucht nur {count}× {role}. Die Stellen sind besetzt."
 ERR_INVALID_AMOUNT = "Ungültige Menge."
 ERR_UNKNOWN_TECH = "Diese Technologie gibt es nicht."

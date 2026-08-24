@@ -344,3 +344,57 @@ def test_reassignment_resets_the_staleness_counter():
     assert worker.rounds_in_assignment == 0
     assert game.assign_worker(worker.id, project.id).ok
     assert visibility(game) == 0.0
+
+
+# -- what the assignment menu may offer --------------------------------------
+
+
+def test_free_slots_counts_down_as_the_posts_fill():
+    game = Game(seed=2)
+    game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN)
+    game.start_project("web_app")                      # 2x Entwickler, 1x Designer
+    project = game.state.active_projects[0]
+    assert game.free_slots(project, Role.DEVELOPER) == 2
+    game.assign_worker(game.state.workers[0].id, project.id)
+    assert game.free_slots(project, Role.DEVELOPER) == 1
+
+
+def test_a_role_the_project_never_asked_for_has_no_slots():
+    game = Game(seed=2)
+    game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN)
+    game.start_project("static_website")               # only a developer
+    assert game.free_slots(game.state.active_projects[0], Role.SALES) == 0
+
+
+def test_projects_needing_a_role_skips_the_ones_that_do_not():
+    game = Game(seed=2)
+    game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN)
+    game.start_project("static_website")               # no designer
+    game.start_project("ecommerce_shop")               # wants one
+    needing = game.projects_needing(Role.DESIGNER)
+    assert [p.blueprint_id for p in needing] == ["ecommerce_shop"]
+
+
+def test_a_project_drops_off_the_list_once_its_posts_are_filled():
+    game = Game(seed=2)
+    game.hire_worker(Role.DESIGNER, WorkerType.HUMAN)
+    game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN)
+    game.start_project("ecommerce_shop")
+    project = game.state.active_projects[0]
+    assert game.projects_needing(Role.DESIGNER) == [project]
+    designer = next(w for w in game.state.workers if w.role is Role.DESIGNER)
+    assert game.assign_worker(designer.id, project.id).ok
+    assert game.projects_needing(Role.DESIGNER) == []
+
+
+def test_everything_the_menu_offers_is_actually_accepted():
+    """The point of putting the rule in the engine: the two cannot drift apart."""
+    game = Game(seed=2)
+    game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN)
+    for blueprint_id in ("static_website", "ecommerce_shop", "mobile_app", "web_app"):
+        game.start_project(blueprint_id)
+    for role in Role:
+        game.hire_worker(role, WorkerType.HUMAN)
+        worker = game.state.workers[-1]
+        for project in game.projects_needing(role):
+            assert game.assign_worker(worker.id, project.id).ok

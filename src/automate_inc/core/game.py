@@ -146,6 +146,21 @@ class Game:
             if self.tech_registry.is_available(tech, self.state.researched)
         ]
 
+    def free_slots(self, project: Project, role: Role) -> int:
+        """How many posts of this role the project still has open.
+
+        Lives here rather than in the UI so that what the menu offers and what
+        ``assign_worker`` accepts can never drift apart.
+        """
+        if role not in project.required_roles:
+            return 0
+        taken = sum(1 for w in self.state.workers_on(project.id) if w.role is role)
+        return max(0, project.required_roles[role] - taken)
+
+    def projects_needing(self, role: Role) -> list[Project]:
+        """Active projects with a free post for this role."""
+        return [p for p in self.state.active_projects if self.free_slots(p, role) > 0]
+
     def _worker_label(self, worker: Worker) -> str:
         spec = load_roles().spec(worker.role)
         if worker.is_human:
@@ -243,12 +258,8 @@ class Game:
                 S.ERR_ROLE_NOT_REQUIRED.format(project=project.name, role=spec.name)
             )
         slots = project.required_roles[worker.role]
-        taken = sum(
-            1
-            for w in self.state.workers_on(project.id)
-            if w.role is worker.role and w.id != worker.id
-        )
-        if taken >= slots:
+        # The worker is not on this project - the check above already returned if so.
+        if self.free_slots(project, worker.role) == 0:
             return ActionResult.failure(
                 S.ERR_ROLE_SLOTS_FULL.format(project=project.name, count=slots, role=spec.name)
             )

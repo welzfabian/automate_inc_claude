@@ -132,7 +132,23 @@ class Menu:
         worker_id = self.choose("Wen zuweisen?", [(w.id, dashboard.worker_label(w)) for w in free])
         if worker_id is None:
             return self.note(S.CANCELLED, style="dim")
-        projects = [(p.id, p.name) for p in self.game.state.active_projects]
+        worker = self.game.state.worker(worker_id)
+        role_name = load_roles().spec(worker.role).name
+        # Only offer what the engine would actually accept.
+        open_projects = self.game.projects_needing(worker.role)
+        if not open_projects:
+            return self.note(S.NO_PROJECT_NEEDS_ROLE.format(role=role_name), style="dim")
+        projects = [
+            (
+                project.id,
+                S.PROJECT_WITH_FREE_SLOTS.format(
+                    project=project.name,
+                    count=self.game.free_slots(project, worker.role),
+                    role=role_name,
+                ),
+            )
+            for project in open_projects
+        ]
         project_id = self.choose("An welches Projekt?", projects)
         if project_id is None:
             return self.note(S.CANCELLED, style="dim")
