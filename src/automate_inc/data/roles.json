@@ -1,0 +1,79 @@
+{
+  "efficiency": {
+    "HUMAN": 1.0,
+    "AGENT_1": 1.2,
+    "AGENT_2": 1.5,
+    "AGENT_3": 2.0
+  },
+  "agent_token_cost_multiplier": {
+    "1": 1.0,
+    "2": 1.6,
+    "3": 2.2
+  },
+  "roles": [
+    {
+      "id": "DEVELOPER",
+      "name": "Entwickler",
+      "symbol": "💻",
+      "human_salary": 80,
+      "agent_tokens": 3,
+      "effect": {
+        "attribute": "quality",
+        "amount": 20
+      },
+      "human_error": {
+        "chance": 0.005,
+        "attribute": "quality",
+        "amount": -5
+      }
+    },
+    {
+      "id": "DESIGNER",
+      "name": "Designer",
+      "symbol": "🎨",
+      "human_salary": 70,
+      "agent_tokens": 2,
+      "effect": {
+        "attribute": "aesthetics",
+        "amount": 15
+      },
+      "human_error": {
+        "chance": 0.005,
+        "attribute": "aesthetics",
+        "amount": -3
+      }
+    },
+    {
+      "id": "SALES",
+      "name": "Sales",
+      "symbol": "👔",
+      "human_salary": 60,
+      "agent_tokens": 2,
+      "effect": {
+        "attribute": "income_bonus_pct",
+        "amount": 10
+      },
+      "human_error": {
+        "chance": 0.01,
+        "attribute": "money",
+        "amount": -10
+      }
+    },
+    {
+      "id": "RESEARCHER",
+      "name": "Forscher",
+      "symbol": "🔬",
+      "human_salary": 90,
+      "agent_tokens": 3,
+      "effect": {
+        "attribute": "research",
+        "amount": 2
+      },
+      "human_error": {
+        "chance": 0.002,
+        "attribute": "research",
+        "amount": -1
+      }
+    }
+  ]
+}
