@@ -102,14 +102,20 @@ Jedes Projekt:
 - **Mindestens 1 Worker der Stufe 2+ (Agent ODER Mensch mit Erfahrung) ist erforderlich**, um ein Projekt zu starten.
 - **Jedes Projekt macht für sich allein Gewinn** (kein Zählen nötig!).
 
-| Projekt-Typ | Beispiel | Benötigte Rollen | Min. Worker-Stufe | Basis-Einnahmen | Basis-Fixkosten | Lebensdauer | Komplexität | Teamgröße | Gewinn (Mensch) | Gewinn (Agent) |
-|-------------|----------|------------------|-----------------|-----------------|-------------|--------------|
-| **Einfache Dienstleistung** | Statische Website | 1 Entwickler | 50€/Runde | 0€ | 20 Runden | ⭐ |
-| **Mittlere Dienstleistung** | E-Commerce-Shop | 1 Entwickler + 1 Designer | 120€/Runde | 0€ | 15 Runden | ⭐⭐ |
-| **Komplexe Dienstleistung** | Web-App mit Backend | 2 Entwickler + 1 Designer | 200€/Runde | 20€ | 12 Runden | ⭐⭐⭐ |
-| **Mobile App** | Kunden-App | 1 Entwickler + 1 Designer + 1 Sales | 150€/Runde | 10€ | 15 Runden | ⭐⭐ |
-| **Enterprise-Software** | Unternehmenslösung | 3 Entwickler + 1 Forscher | 300€/Runde | 50€ | 10 Runden | ⭐⭐⭐ |
-| **KI-Integration** | KI-Modul für Kunde | 2 Entwickler + 1 Forscher + 1 Sales | 400€/Runde | 80€ | 8 Runden | ⭐⭐⭐⭐ |
+| Projekt-Typ | Beispiel | Benötigte Rollen | Basis-Einnahmen | Basis-Fixkosten | Lebensdauer | Komplexität | Implementiert |
+|-------------|----------|------------------|-----------------|-----------------|-------------|-------------|---------------|
+| **Einfache Dienstleistung** | Statische Website | 1 Entwickler | 100€/Runde | 0€ | 20 Runden | ⭐ | ✅ |
+| **Mittlere Dienstleistung** | E-Commerce-Shop | 1 Entwickler + 1 Designer | 170€/Runde | 0€ | 15 Runden | ⭐⭐ | ✅ |
+| **Mobile App** | Kunden-App | 1 Entwickler + 1 Designer + 1 Sales | 220€/Runde | 10€ | 15 Runden | ⭐⭐ | ✅ |
+| **Komplexe Dienstleistung** | Web-App mit Backend | 2 Entwickler + 1 Designer | 270€/Runde | 20€ | 12 Runden | ⭐⭐⭐ | ✅ |
+| **Enterprise-Software** | Unternehmenslösung | 3 Entwickler + 1 Forscher | 380€/Runde | 50€ | 10 Runden | ⭐⭐⭐ | ⬜ geplant |
+| **KI-Integration** | KI-Modul für Kunde | 2 Entwickler + 1 Forscher + 1 Sales | 480€/Runde | 80€ | 8 Runden | ⭐⭐⭐⭐ | ⬜ geplant |
+
+> **Hinweis zu den Zahlen:** Die ursprünglichen Basis-Einnahmen dieser Tabelle lagen
+> unter den Worker-Kosten aus Kapitel 3.5 — jede Besetzung wäre defizitär gewesen.
+> Die Werte sind auf die Balance-Vorgabe aus VISION.md angehoben (ein rein
+> menschliches Team macht kleinen Gewinn). Siehe [BALANCING.md](./BALANCING.md).
+> Die maßgebliche Datenquelle für das Spiel ist `src/automate_inc/data/projects.json`.
 
 #### 3.3 Produkt-Typen
 
