@@ -77,3 +77,72 @@ sich *offensichtlich lohnen*, damit der Twist später greift.
 
 Nicht in den Docs geregelt. Im Spiel läuft die Gehaltsabrechnung weiter, auch wenn
 jemand keinem Projekt zugewiesen ist — sonst wäre Personalaufbau auf Vorrat gratis.
+
+---
+
+# Meilenstein 2
+
+## 7. Alignment-Verfall hängt an der Stufe, nicht an der Rolle
+
+Die Worker-Attribut-Tabelle (GAME_DESIGN.md 2) gibt jedem Agenten der Stufe 2
+`−1 Alignment/Runde` und Stufe 3 `−3/Runde`. Die Rollen-Tabelle (GAME_DESIGN.md 1) gibt
+dem **Forscher**-Agenten nochmals dieselben Werte. Wörtlich gelesen würde ein
+Forscher-Agent doppelt bestraft.
+
+**Auflösung:** Der Verfall hängt **allein an der Stufe**. Die Forscher-Zeile ist eine
+Wiederholung derselben Regel, kein zusätzlicher Effekt. Die Werte stehen als
+`AGENT_ALIGNMENT_DECAY` in `core/economy.py`; ein Test (`test_the_researcher_role_gets_no_extra_decay`)
+hält die Regel fest.
+
+## 8. Kein zufälliger Basis-Verfall
+
+VISION.md nennt einen Basis-Verfall von „−1 bis −10 pro Runde (zufällig)". Zusammen mit
+dem Stufen-Verfall wäre Alignment binnen weniger Runden unter 20 — und der Spieler
+könnte Ursache und Wirkung nicht mehr verknüpfen. Das widerspricht dem erklärten
+psychologischen Ziel („der Spieler *glaubt*, er habe Einfluss"): Für diesen Glauben muss
+die Mechanik lesbar sein.
+
+**Auflösung:** **Kein zufälliger Basis-Verfall.** Die Alignment-Bilanz ist vollständig
+deterministisch und ergibt sich aus Agenten (nach Stufe), Menschen und erforschter
+Technologie. Sie steht als `(±n/Runde)` im Dashboard neben dem Alignment-Wert, damit sie
+vor der Entscheidung sichtbar ist und nicht erst danach.
+
+## 9. Menschen geben +1 Alignment, nicht +5
+
+„+5 Alignment global pro Mensch" (GAME_DESIGN.md 2) wörtlich genommen: Zwei Menschen
+gleichen drei Agenten der Stufe 3 vollständig aus. Automatisierung hätte keinen Preis.
+
+**Auflösung:** **+1 pro Mensch und Runde**, gedeckelt bei 100. Menschen bremsen den
+Verfall spürbar, halten ihn aber nicht auf.
+
+## 10. „KI-Alignment" dämpft den Verfall, statt ihn zu überkompensieren
+
+Ursprünglich als flache `+2 Alignment/Runde` geplant. In der Simulation war das
+wirkungslos: Der Verfall wächst mit der Anzahl der Agenten, ein flacher Bonus nicht. Bei
+neun Agenten der Stufe 2 stehen −9/Runde gegen +2 — die Technologie, die laut VISION.md
+gerade die Abhängigkeit vertiefen soll, war schlicht kein Angebot.
+
+**Auflösung:** `ai_alignment` **halbiert den Verfall aus Agenten**
+(`alignment_decay_multiplier: 0.5`) statt einen festen Betrag zu addieren. Damit skaliert
+sie mit der Flottengröße und wird zur echten Alternative zu „mehr Menschen einstellen" —
+und erfüllt ihren erzählerischen Zweck: Sie löst das Problem, indem sie das Weiterskalieren
+erlaubt.
+
+Der Dämpfer wirkt **nicht** auf die gefährlichen Technologien (`autonomous_agents`,
+`ai_consciousness`). Deren Alignment-Kosten sind strukturell, kein Nebeneffekt von
+Personalstärke.
+
+## Was die Simulation zu M2 zeigt
+
+Über 45 Runden, gleicher Seed, drei Strategien:
+
+| Strategie | Ausgang |
+|-----------|---------|
+| Vollautomatisierung, Stufe 3, keine Gegenmaßnahme | Kontrollverlust ~Runde 15 |
+| Stufe 2 + „KI-Alignment" + „Bug-Fixing" | Kontrollverlust ~Runde 24 |
+| Menschen entwickeln, Agenten der **Stufe 1** gestalten und forschen | läuft dauerhaft, ⚖ 100 |
+
+Das ist die beabsichtigte Kurve: Agenten der Stufe 1 sind alignment-neutral und bleiben
+ein tragfähiges Dauerangebot; die Stufen 2 und 3 lohnen sich sofort sichtbar und kosten
+erst mit Verzögerung. Das Misalignment-Ende ist **erreichbar, ohne unausweichlich zu
+sein** — genau die Bedingung aus dem M2-Plan.

@@ -8,7 +8,7 @@ Teil davon war.
 | Meilenstein | Titel | Status | Abgeschlossen |
 |-------------|-------|--------|---------------|
 | [M1](./M1_VERTICAL_SLICE.md) | Spielbarer Vertical Slice | ✅ Abgeschlossen | 24. August 2026 |
-| [M2](./M2_AUTOMATION_BITES_BACK.md) | Automatisierung beißt zurück | 🔄 in Arbeit | — |
+| [M2](./M2_AUTOMATION_BITES_BACK.md) | Automatisierung beißt zurück | ✅ Abgeschlossen | 24. August 2026 |
 | M3 | Zufallsereignisse *(noch nicht geplant)* | ⬜ offen | — |
 
 ## Konvention

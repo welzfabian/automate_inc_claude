@@ -44,8 +44,18 @@ would have — do not replace it with a live generator.
 costs → settle → token price → project lifecycle → phase → end conditions). Each step is
 its own private method. Reordering changes the balance.
 
-**Endings extend `END_CONDITIONS`** in `core/game.py` — a list of `EndCondition`. M1 has
-only bankruptcy; the twist endings are meant to be appended, not special-cased.
+**Endings extend `END_CONDITIONS`** in `core/game.py` — a list of `EndCondition`. It holds
+bankruptcy and misalignment; the twist endings are meant to be appended, not special-cased.
+
+**Technologies never appear in engine code.** `core/tech.py` aggregates everything
+researched into one `Modifiers` value object, and the rest of the engine asks that object
+questions instead of checking technology IDs. A new technology that reuses an existing
+modifier field is pure configuration in `data/technologies.json`; a new field needs an
+entry in the `AGGREGATION` table (max / multiplicative / additive) and nothing else.
+
+**Alignment is deterministic.** `economy.alignment_delta()` derives it from agent levels,
+human headcount and research — no RNG (`BALANCING.md` 8). The player has to be able to
+read the balance before deciding, which is why the dashboard shows it as `(±n/Runde)`.
 
 ## Balancing data is not in code
 

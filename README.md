@@ -58,8 +58,12 @@ unterwegs nötig waren.
 **Meilenstein 1 ([abgeschlossen](docs/milestones/M1_VERTICAL_SLICE.md)):** Ressourcen, Menschen und Agenten der Stufe 1, vier
 Projekttypen, Rundenabrechnung, Token-Markt, Speichern/Laden, Bankrott.
 
-**Geplant:** Produkte und Upgrades, Tech-Tree, Agenten-Stufen 2 und 3, externe
-Druckereignisse (Investoren, Privatleben, Markt), HR-Rolle — und der Twist.
+**Meilenstein 2 ([abgeschlossen](docs/milestones/M2_AUTOMATION_BITES_BACK.md)):** Tech-Tree
+mit acht Technologien, Agenten der Stufen 2 und 3 samt Nebeneffekten, Alignment als
+lebende Mechanik — und der Kontrollverlust als zweites Spielende.
+
+**Geplant:** Zufallsereignisse, Produkte und Upgrades, externe Druckereignisse
+(Investoren, Privatleben, Markt), HR-Rolle — und der Twist.
 
 ## Dokumentation
 
