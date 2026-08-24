@@ -104,3 +104,17 @@ chronicle: it links to the specs and `BALANCING.md` rather than restating rules.
 
 Bump `SAVE_FORMAT_VERSION` in `core/state.py` whenever `GameState` gains or loses a
 serialised field — `from_dict` rejects unknown versions on purpose.
+
+**Balancing numbers are simulated, not guessed.** M3 predicted that technology costs
+would have to triple and the simulation refuted it — the bottleneck was never money. Any
+number that shapes the pacing of a run gets played or simulated before it is written into
+`data/*.json`, and the reasoning goes into `BALANCING.md`.
+
+**The missing money sink stays an open point.** M4 answers it in part (recurring fixed
+costs from events), deliberately not in full. Do not tick it off in
+`docs/milestones/README.md` — products, office upkeep, agent maintenance and investor
+payouts remain candidates for a later milestone.
+
+**Nothing may reach the balance sheet unexplained.** Alignment is deterministic so the
+player can read it before deciding; every event effect that moves money, income or
+alignment owes the turn report its own named line for the same reason.
