@@ -1,0 +1,291 @@
+{
+  "tuning": {
+    "max_events_per_turn": 1,
+    "chance_scale": 1.0,
+    "base_cooldown_turns": 4
+  },
+  "events": [
+    {
+      "id": "ai_hype",
+      "category": "AI",
+      "name": "KI-Hype",
+      "description": "Ein Tech-Blog hat einen Artikel über eure Automatisierung veröffentlicht. Die Anfragen häufen sich.",
+      "requires": { "min_agents": 2 },
+      "chance": 0.15,
+      "once": true,
+      "options": [
+        {
+          "id": "capitalize",
+          "label": "Hype nutzen und werben",
+          "effects": { "income_multiplier": 1.15 },
+          "duration": 5
+        },
+        {
+          "id": "ignore",
+          "label": "Verpuffen lassen",
+          "effects": {}
+        }
+      ]
+    },
+    {
+      "id": "ai_ethics_debate",
+      "category": "AI",
+      "name": "Ethik-Debatte",
+      "description": "Eine Branchenzeitschrift fragt öffentlich nach euren Richtlinien für den Einsatz von KI-Agenten.",
+      "requires": { "min_agent_level": 2 },
+      "chance": 0.12,
+      "once": true,
+      "options": [
+        {
+          "id": "publish_guidelines",
+          "label": "Leitlinien veröffentlichen (300 €)",
+          "effects": { "money": -300, "alignment": 5 }
+        },
+        {
+          "id": "stay_quiet",
+          "label": "Nicht kommentieren",
+          "effects": { "alignment": -5 }
+        }
+      ]
+    },
+    {
+      "id": "ai_regulation",
+      "category": "AI",
+      "name": "KI-Regulierung",
+      "description": "Der Gesetzgeber hat von eurer Belegschaft gehört. Ab jetzt gilt eine Meldepflicht für Agentenflotten dieser Größe.",
+      "requires": { "min_agents": 7 },
+      "chance": 0.15,
+      "once": true,
+      "options": [
+        {
+          "id": "comply",
+          "label": "Steuer zahlen",
+          "effects": { "cost_per_agent": 10 },
+          "duration": null
+        },
+        {
+          "id": "lobby",
+          "label": "Lobbyisten beauftragen (2.000 €)",
+          "effects": { "money": -2000, "alignment": -5 }
+        }
+      ]
+    },
+    {
+      "id": "ai_scandal",
+      "category": "AI",
+      "name": "KI-Skandal",
+      "description": "Eine Boulevardzeitung hat Screenshots eurer Agenten-Logs. Nichts Illegales - aber unangenehm genug für eine Schlagzeile.",
+      "requires": { "min_agents": 5, "max_alignment": 40 },
+      "chance": 0.1,
+      "once": true,
+      "options": [
+        {
+          "id": "damage_control",
+          "label": "PR-Agentur engagieren (1.500 €)",
+          "effects": { "money": -1500 }
+        },
+        {
+          "id": "double_down",
+          "label": "Dementieren",
+          "effects": { "alignment": -10 }
+        }
+      ]
+    },
+    {
+      "id": "recession",
+      "category": "MARKET",
+      "name": "Rezession",
+      "description": "Die Auftragslage der ganzen Branche bricht spürbar ein. Eure Kunden zahlen später und weniger.",
+      "requires": { "min_turn": 5 },
+      "chance": 0.08,
+      "once": false,
+      "options": [
+        {
+          "id": "endure",
+          "label": "Durchhalten",
+          "effects": { "income_multiplier": 0.7 },
+          "duration": 4
+        },
+        {
+          "id": "invest_through_it",
+          "label": "Gegensteuern (800 €)",
+          "effects": { "money": -800 }
+        }
+      ]
+    },
+    {
+      "id": "competition",
+      "category": "MARKET",
+      "name": "Konkurrenz",
+      "description": "Ein neuer Anbieter unterbietet eure Preise systematisch. Erste Kunden fragen nach.",
+      "requires": { "min_projects": 2, "min_money": 200 },
+      "chance": 0.1,
+      "once": false,
+      "options": [
+        {
+          "id": "lower_prices",
+          "label": "Preise senken",
+          "effects": { "income_multiplier": 0.85 },
+          "duration": 5
+        },
+        {
+          "id": "differentiate",
+          "label": "Auf Qualität setzen (600 €)",
+          "effects": { "money": -600 }
+        }
+      ]
+    },
+    {
+      "id": "tax_hike",
+      "category": "MARKET",
+      "name": "Steuererhöhung",
+      "description": "Die Gewerbesteuer steigt. Für alle, dauerhaft.",
+      "requires": { "min_turn": 10 },
+      "chance": 0.08,
+      "once": true,
+      "options": [
+        {
+          "id": "accept",
+          "label": "Hinnehmen",
+          "effects": { "cost_multiplier": 1.08 },
+          "duration": null
+        },
+        {
+          "id": "restructure",
+          "label": "Steuerberatung engagieren (1.000 €)",
+          "effects": { "money": -1000 }
+        }
+      ]
+    },
+    {
+      "id": "supply_chain",
+      "category": "MARKET",
+      "name": "Lieferkette",
+      "description": "Ein Ausfall bei einem Cloud-Zulieferer verzögert mehrere laufende Projekte gleichzeitig.",
+      "requires": { "min_projects": 1, "min_money": 300, "not_after_event": "recession" },
+      "chance": 0.07,
+      "once": false,
+      "options": [
+        {
+          "id": "expedite",
+          "label": "Express-Wechsel (400 €)",
+          "effects": { "money": -400 }
+        },
+        {
+          "id": "delay",
+          "label": "Verzögerung akzeptieren",
+          "effects": { "income_multiplier": 0.9 },
+          "duration": 3
+        }
+      ]
+    },
+    {
+      "id": "rent",
+      "category": "PRIVATE",
+      "name": "Büromiete",
+      "description": "Der Vermieter braucht eine Entscheidung: fester Vertrag oder flexibles Büro.",
+      "requires": { "min_turn": 3 },
+      "chance": 1.0,
+      "once": true,
+      "options": [
+        {
+          "id": "sign_lease",
+          "label": "Festen Mietvertrag unterschreiben",
+          "effects": { "fixed_cost": 30 },
+          "duration": null
+        },
+        {
+          "id": "flex_office",
+          "label": "Flexibles Büro (teurer, kündbar)",
+          "effects": { "fixed_cost": 45 },
+          "duration": null
+        }
+      ]
+    },
+    {
+      "id": "health_insurance",
+      "category": "PRIVATE",
+      "name": "Krankenversicherung",
+      "description": "Eure Belegschaft besteht inzwischen aus genug Menschen, dass eine Betriebsversicherung zur Frage wird.",
+      "requires": { "min_humans": 2 },
+      "chance": 0.1,
+      "once": true,
+      "options": [
+        {
+          "id": "company_plan",
+          "label": "Betriebsversicherung abschließen",
+          "effects": { "fixed_cost": 25 },
+          "duration": null
+        },
+        {
+          "id": "opt_out",
+          "label": "Darauf verzichten",
+          "effects": { "alignment": -8 }
+        }
+      ]
+    },
+    {
+      "id": "car_trouble",
+      "category": "PRIVATE",
+      "name": "Auto kaputt",
+      "description": "Der Firmenwagen ist liegen geblieben, mitten auf dem Weg zu einem Kundentermin.",
+      "requires": { "min_turn": 2 },
+      "chance": 0.06,
+      "once": false,
+      "options": [
+        {
+          "id": "repair",
+          "label": "Reparieren lassen (300 €)",
+          "effects": { "money": -300 }
+        },
+        {
+          "id": "sell_car",
+          "label": "Verkaufen statt reparieren (+150 €)",
+          "effects": { "money": 150 }
+        }
+      ]
+    },
+    {
+      "id": "quarterly_report",
+      "category": "INVESTOR",
+      "name": "Quartalsbericht",
+      "description": "Die Investoren erwarten Zahlen. Wie präsentiert ihr sie?",
+      "requires": { "min_turn": 4, "every_n_turns": 4 },
+      "chance": 1.0,
+      "once": false,
+      "options": [
+        {
+          "id": "honest_numbers",
+          "label": "Ehrlich berichten",
+          "effects": {}
+        },
+        {
+          "id": "optimistic_spin",
+          "label": "Zahlen schönen",
+          "effects": { "alignment": -3 }
+        }
+      ]
+    },
+    {
+      "id": "investor_threat",
+      "category": "INVESTOR",
+      "name": "Investoren-Drohung",
+      "description": "Nach einem roten Quartal fragen die Investoren unangenehm konkret nach, wie es weitergeht.",
+      "requires": { "after_event": "quarterly_report", "max_last_net": 0 },
+      "chance": 0.2,
+      "once": true,
+      "options": [
+        {
+          "id": "give_equity",
+          "label": "Notfinanzierung annehmen (+3.000 €, Anteile abgeben)",
+          "effects": { "money": 3000, "alignment": -10 }
+        },
+        {
+          "id": "refuse",
+          "label": "Ablehnen (Vertragsstrafe, 500 €)",
+          "effects": { "money": -500 }
+        }
+      ]
+    }
+  ]
+}

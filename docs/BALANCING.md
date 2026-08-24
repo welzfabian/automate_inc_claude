@@ -282,3 +282,83 @@ Menschen sind teuer genug, dass Übersteuern die Firma umbringt.
 bestehenden Kosten liegt Stufe 2 bei Runde 7–10 und Stufe 3 bei Runde 17–23, begrenzt
 durch die Forscherzahl, nicht durch das Budget). Was fehlt, ist eine **Geldsenke** —
 ein Thema für einen späteren Meilenstein, nicht für aufgeblähte Forschungskosten.
+
+---
+
+# Meilenstein 4
+
+## 16. Effekte wirken erst mit der Antwort, nicht mit dem Auslösen
+
+[`M4_EVENTS.md`](./milestones/M4_EVENTS.md) Abschnitt 6 liest sich so, als bekäme ein
+ausgelöstes Ereignis seine Sofortbuchung schon in der Runde, in der es auftaucht, unter
+„Abrechnung". Das widerspricht dem, was zwei Absätze vorher steht: „Ein ausgelöstes
+Ereignis wirkt **nicht sofort**. [...] erst die gewählte Option bringt Effekte mit."
+
+**Auflösung:** Die zweite Aussage ist maßgeblich. `Game._trigger_events` legt nur eine
+`PendingDecision` an; jeder Effekt — ob Sofortbuchung oder laufender Druck — entsteht
+ausschließlich in `Game.answer_event`. Die Sofortbuchung erscheint dafür in der
+`ActionResult`-Meldung der Antwort, nicht als eigene Zeile im nächsten `TurnReport`. Das
+hält die Regel „unausweichlich, aber beantwortbar" strikt ein: Wäre die Wirkung an das
+Auslösen gekoppelt, könnte ein Ereignis Geld oder Alignment kosten, bevor der Spieler
+überhaupt gefragt wurde.
+
+## 17. `resolve_turn()` blockiert nicht mehr, sobald das Spiel vorbei ist
+
+Ein Ereignis kann in genau der Runde auslösen, die das Spiel beendet (Bankrott oder
+Kontrollverlust, geprüft nach `_trigger_events`). Ohne Sonderregel bliebe die entstandene
+`PendingDecision` für immer offen: `answer_event` verweigert sich wie jede andere Aktion,
+sobald `state.is_over` gilt (`ERR_GAME_OVER`), und `resolve_turn()` blockiert wiederum,
+solange eine Entscheidung offen ist — ein Deadlock ohne Ausweg.
+
+**Auflösung:** Die Blockade in `resolve_turn()` gilt nur, während das Spiel noch läuft
+(`pending_decisions and not state.is_over`). Das ist auch der Grund, warum
+`resolve_turn()` schon vor M4 keinen `is_over`-Wächter hatte: Es lief absichtlich über das
+Spielende hinaus weiter (siehe `tests/test_turn.py`, `run_solvent`), und diese Eigenschaft
+bleibt erhalten, statt durch die Ereignis-Blockade zufällig auszufallen.
+
+## 18. Der Katalog ist bewusst auf 13 Ereignisse reduziert
+
+`M4_EVENTS.md` nennt für die Investoren-Kategorie ausdrücklich die Option, sie „notfalls
+auf den Quartalsbericht plus Drohung" zu reduzieren. Diese Erlaubnis wurde für alle vier
+Kategorien genutzt: KI-Hype, Ethik-Debatte, KI-Regulierung, KI-Skandal · Rezession,
+Konkurrenz, Steuererhöhung, Lieferkette · Miete, Krankenversicherung, Auto kaputt ·
+Quartalsbericht, Investoren-Drohung. Urlaub, Baby und Börsengang aus der Spec-Liste fehlen.
+
+**Grund:** `AGGREGATION`-artige Tabellen (hier: die Bedingungs- und Effekt-Tabellen in
+`core/events.py`) sind darauf ausgelegt, dass ein neues Ereignis reine Konfiguration ist.
+Die Mechanik selbst — Freischaltung, Wurf, Entscheidung, laufender vs. einmaliger Effekt,
+Alterung — ist mit 13 Ereignissen über alle vier Kategorien und jede Bedingungs- und
+Effektart hinweg getestet (`tests/test_events.py`). Weitere Ereignisse sind danach ein
+Eintrag in `data/events.json`, kein Grund, den Meilenstein offen zu halten.
+
+## 19. Was die Simulation zu M4 zeigt
+
+Dieselbe Idee wie bei M2/M3, aber gegen den Ereigniskatalog statt gegen die Technologie:
+ein minimal besetztes Team an genau einer Web-App (BALANCING.md 14), 60 Runden,
+Entscheidungen nach einer einfachen, nicht optimierenden Regel beantwortet („nimm die
+günstigste sofort bezahlbare Option, sonst die erste"). Elf Seeds für das reine
+Menschen-Team:
+
+| Ergebnis | Seeds | Anteil |
+|----------|------:|-------:|
+| Überlebt 60 Runden | 6 von 11 | 55 % |
+| Bankrott | 5 von 11 | 45 % |
+
+Unter den überlebenden Läufen lag der Tiefststand zwischen 132 € und 414 € — echte knappe
+Runden, kein Puffer von 30.000 € mehr. Das ist die beabsichtigte Wirkung: Ein
+Ein-Projekt-Team mit ohnehin nur ≈ +20 €/Runde Nettoertrag (BALANCING.md 5) trägt jetzt
+ein reales Bankrottrisiko, ohne dass jede Partie zwangsläufig verloren geht.
+
+Automatisierung (Stufe-3-Agenten, „KI-Alignment" erforscht, sonst identisches Setup, sechs
+Seeds) bleibt überwiegend bei der beabsichtigten Endbedingung: fünf von sechs Läufen enden
+im Kontrollverlust (Runde 15–18) bei komfortablem Kontostand (Tiefststand 594–744 €), ein
+Lauf endet in dieser Stichprobe im Bankrott. Die Zielvorgabe aus `M4_EVENTS.md` — die reine
+Automatisierungsstrategie „soll weiterhin in den Kontrollverlust führen, nicht in den
+Bankrott" — gilt damit als Regelfall, nicht als Garantie; ein einzelnes Ereignis kann eine
+ansonsten stabile Automatisierung in einer schlecht getroffenen Runde trotzdem umbringen.
+Das ist als Eigenschaft von Ereignissen hingenommen, nicht nachgeglättet: „unausweichlich"
+schließt einen unglücklichen Ausgang nicht aus.
+
+**Nicht separat simuliert:** Überbesetzung jenseits der von einem Projekt geforderten
+Stellen bleibt so teuer wie vor M4 (BALANCING.md 6) und wurde hier nicht erneut vermessen
+— das ist keine neue Eigenschaft von M4, sondern dieselbe bestehende Regel.

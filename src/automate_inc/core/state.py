@@ -7,10 +7,11 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 
+from automate_inc.core.events import ActiveEffect
 from automate_inc.core.projects import Project
 from automate_inc.core.workers import Worker
 
-SAVE_FORMAT_VERSION = 4
+SAVE_FORMAT_VERSION = 5
 
 START_MONEY = 1000.0
 START_TOKENS = 50.0
@@ -60,6 +61,18 @@ class GameState:
     rng_seed: int = 0
     log: list[str] = field(default_factory=list)
     game_over_reason: str | None = None
+    active_events: list[ActiveEffect] = field(default_factory=list)
+    """Running event effects, read by ``events.Pressure`` - the ``Modifiers``
+    equivalent for external pressure instead of research."""
+    pending_decisions: list[str] = field(default_factory=list)
+    """Event IDs waiting for ``Game.answer_event``. Non-empty blocks ``resolve_turn``."""
+    event_history: list[str] = field(default_factory=list)
+    """Every event ID that has ever triggered, in order - drives ``once`` and
+    ``after_event``/``not_after_event`` chains."""
+    event_last_turn: dict[str, int] = field(default_factory=dict)
+    """Turn each event last triggered on, for its cooldown."""
+    last_net: float | None = None
+    """The previous round's net result, read by the ``max_last_net`` condition."""
 
     def phase(self, unlocked_agent_level: int = 1) -> Phase:
         """Which phase the company is in, derived from what the player has done.
@@ -116,6 +129,11 @@ class GameState:
             "rng_seed": self.rng_seed,
             "log": list(self.log),
             "game_over_reason": self.game_over_reason,
+            "active_events": [e.to_dict() for e in self.active_events],
+            "pending_decisions": list(self.pending_decisions),
+            "event_history": list(self.event_history),
+            "event_last_turn": dict(self.event_last_turn),
+            "last_net": self.last_net,
         }
 
     @classmethod
@@ -137,6 +155,11 @@ class GameState:
             rng_seed=data["rng_seed"],
             log=list(data["log"]),
             game_over_reason=data["game_over_reason"],
+            active_events=[ActiveEffect.from_dict(e) for e in data["active_events"]],
+            pending_decisions=list(data["pending_decisions"]),
+            event_history=list(data["event_history"]),
+            event_last_turn=dict(data["event_last_turn"]),
+            last_net=data["last_net"],
         )
 
     def save(self, path: Path) -> None:

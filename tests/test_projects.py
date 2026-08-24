@@ -2,6 +2,7 @@
 
 import pytest
 
+from _helpers import NO_EVENTS, advance
 from automate_inc.core.game import Game
 from automate_inc.core.projects import ProjectRegistry, load_registry
 from automate_inc.core.workers import Role, WorkerType
@@ -95,7 +96,7 @@ def test_failed_action_leaves_state_untouched():
 @pytest.mark.parametrize("blueprint_id", ["static_website", "ecommerce_shop", "web_app"])
 def test_every_catalog_project_is_profitable_with_humans(blueprint_id):
     """VISION.md: a purely human team should make a small profit, not a loss."""
-    game = Game(seed=3)
+    game = Game(seed=3, event_registry=NO_EVENTS)
     blueprint = game.registry.get(blueprint_id)
     for role, count in blueprint.required_roles.items():
         for _ in range(count):
@@ -105,5 +106,5 @@ def test_every_catalog_project_is_profitable_with_humans(blueprint_id):
     for worker in game.state.workers:
         game.assign_worker(worker.id, project_id)
     for _ in range(6):  # let quality and aesthetics ramp up to their ceiling
-        report = game.resolve_turn()
+        report = advance(game)
     assert report.income > report.costs_money
