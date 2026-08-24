@@ -67,8 +67,10 @@ Projekte werden zu Investitionen mit laufender Instandhaltung — Baufortschritt
 Attribut-Deckel nach Besetzung, Projektgröße bestimmt Ertrag und Laufzeit, und die
 Spielphasen richten sich nach dem, was der Spieler getan hat, statt nach der Rundenzahl.
 
-**Geplant:** Zufallsereignisse, Produkte und Upgrades, externe Druckereignisse
-(Investoren, Privatleben, Markt), HR-Rolle — und der Twist.
+**Geplant:** Zufallsereignisse, eine Geldsenke (nach M3 sammelt sich Geld an, ohne dass
+es je knapp wird), Produkte und Upgrades, externe Druckereignisse (Investoren,
+Privatleben, Markt), HR-Rolle — und der Twist. Die offenen Punkte im Einzelnen stehen in
+[docs/milestones/](docs/milestones/).
 
 ## Dokumentation
 

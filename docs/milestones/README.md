@@ -11,6 +11,25 @@ Teil davon war.
 | [M2](./M2_AUTOMATION_BITES_BACK.md) | Automatisierung beißt zurück | ✅ Abgeschlossen | 24. August 2026 |
 | [M3](./M3_PROGRESS_AND_MAINTENANCE.md) | Fortschritt und Instandhaltung | ✅ Abgeschlossen | 24. August 2026 |
 | M4 | Zufallsereignisse *(noch nicht geplant)* | ⬜ offen | — |
+| M? | Geldsenke *(noch nicht geplant)* | ⬜ offen | — |
+
+## Offene Punkte ohne eigenen Meilenstein
+
+Befunde, die feststehen, aber noch keinem Meilenstein zugeordnet sind. Sie stehen
+hier, damit sie beim Planen des nächsten Meilensteins auf dem Tisch liegen.
+
+- **Geldsenke fehlt.** Nach M3 endet der Spieler in jeder Simulation mit über 30.000 €
+  und keiner einzigen knappen Runde. Geld ist nie der Engpass, sondern nur die
+  Forscherzahl. Das ist der größte offene Balancing-Punkt — und der Grund, warum die
+  Technologiekosten in M3 **nicht** erhöht wurden (das wäre die falsche Antwort auf das
+  richtige Problem gewesen, siehe [BALANCING.md](../BALANCING.md)). Ob das ein eigener
+  Meilenstein wird oder Teil eines anderen, ist offen: Produkte, Upgrades, Bürokosten
+  und Investoren wären allesamt Kandidaten dafür.
+- **Kunden-App und Web-App sind wirtschaftlich fast identisch** — beide fordern drei
+  Stellen, und die Zielgröße hängt nur an der Stellenzahl. Eine der beiden braucht eine
+  vierte Stelle oder eine andere Laufzeit.
+- **Ein Projekt, das bei Ablauf nie fertig wurde, hat keine Folgen.** Naheliegender
+  Anknüpfungspunkt für die Zufallsereignisse.
 
 ## Konvention
 
