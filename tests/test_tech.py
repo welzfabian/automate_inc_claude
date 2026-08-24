@@ -8,8 +8,8 @@ from automate_inc.core.tech import (
     MODIFIER_FIELDS,
     Modifiers,
     TechCategory,
-    TechRegistry,
     Technology,
+    TechRegistry,
     aggregate,
     load_tech_registry,
 )

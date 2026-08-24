@@ -10,8 +10,7 @@ from rich.text import Text
 
 from automate_inc import strings as S
 from automate_inc.core import economy
-from automate_inc.core.game import Game, TurnReport
-from automate_inc.core.game import alignment_tier
+from automate_inc.core.game import Game, TurnReport, alignment_tier
 from automate_inc.core.state import GameState, Phase
 from automate_inc.core.tech import TechCategory
 from automate_inc.core.workers import Role, Worker, load_roles
@@ -228,7 +227,10 @@ def research_panel(game: Game) -> RenderableType:
             )
             table.add_row(
                 Text("🔒", style="dim"),
-                Text(f"{tech.name} — {S.RESEARCH_LOCKED_HINT.format(missing=missing)}", style="dim"),
+                Text(
+                    f"{tech.name} — {S.RESEARCH_LOCKED_HINT.format(missing=missing)}",
+                    style="dim",
+                ),
                 Text(f"{tech.cost} 🔬", style="dim"),
             )
     return Panel(table, title=S.HEADER_RESEARCH, border_style="dim")

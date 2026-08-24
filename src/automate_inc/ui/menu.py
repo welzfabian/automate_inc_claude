@@ -111,7 +111,11 @@ class Menu:
 
     def start_project(self) -> None:
         options = [
-            (bp.id, f"{bp.name} — {bp.base_income} €/Runde, {bp.lifetime} Runden — {bp.description}")
+            (
+                bp.id,
+                f"{bp.name} — {bp.base_income} €/Runde, {bp.lifetime} Runden "
+                f"— {bp.description}",
+            )
             for bp in self.game.registry.all()
         ]
         blueprint_id = self.choose(S.HEADER_CATALOG, options)
@@ -182,7 +186,9 @@ class Menu:
     def buy_tokens(self) -> None:
         price = self.game.state.token_price
         self.console.print()
-        self.console.print(f"Token-Preis: [yellow]{price:.2f} €[/yellow]. Wie viele? {S.PROMPT_CANCEL}")
+        self.console.print(
+            f"Token-Preis: [yellow]{price:.2f} €[/yellow]. Wie viele? {S.PROMPT_CANCEL}"
+        )
         raw = self.ask(S.PROMPT)
         if not raw:
             return self.note(S.CANCELLED, style="dim")
@@ -235,7 +241,8 @@ class Menu:
             for message in self.pending:
                 self.console.print(Text(message, style="dim"))
             if self.game.state.is_over:
-                self.console.print(dashboard.game_over_panel(self.game.state.game_over_reason or ""))
+                reason = self.game.state.game_over_reason or ""
+                self.console.print(dashboard.game_over_panel(reason))
                 self.ask(f"[dim]{S.PRESS_ENTER}[/dim] ")
                 return
             command = self.ask(f"\n{S.PROMPT}").lower()

@@ -9,11 +9,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 pytest                           # all tests (pyproject sets pythonpath=["src"])
 pytest tests/test_turn.py::test_bankruptcy_ends_the_game    # a single test
 PYTHONPATH=src python3 -m automate_inc                      # run without the launcher
+ruff check .                     # lint; the tree is clean, keep it that way
 ```
 
-`ruff` is configured in `pyproject.toml` but is not installed in the environment, so
-linting has never actually run. Install it with `pip install -e ".[dev]"` before
-claiming a change is lint-clean. There is no CI.
+`ruff check .` passes as of M3. `UP042` is switched off on purpose: the enums mix in
+`str` because they are serialised through `.value` into the save file, and moving them to
+`enum.StrEnum` would change what `str(member)` and f-strings produce.
+
+`ruff format` is **not** applied to this codebase - it would reformat nine files and bury
+the history. Do not run it as a drive-by. There is no CI, so nothing enforces either of
+these but you.
 
 ## Language convention
 
@@ -40,9 +45,11 @@ into `ui/`.
 level. This is why a loaded save resolves the next turn exactly as the original run
 would have — do not replace it with a live generator.
 
-**`resolve_turn()` has a fixed step order** (worker effects → side effects → income →
-costs → settle → token price → project lifecycle → phase → end conditions). Each step is
-its own private method. Reordering changes the balance.
+**`resolve_turn()` has a fixed step order** (progress → worker effects → side effects →
+alignment → income → costs → settle → token price → project lifecycle → phase → end
+conditions). Each step is its own private method. Reordering changes the balance: progress
+and the attribute effects both run before income, so a round's work is paid in the same
+round it happens.
 
 **Endings extend `END_CONDITIONS`** in `core/game.py` — a list of `EndCondition`. It holds
 bankruptcy and misalignment; the twist endings are meant to be appended, not special-cased.

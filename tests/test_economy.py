@@ -121,10 +121,17 @@ def test_sales_worker_adds_visibility():
 
 def test_the_sales_post_pays_for_itself():
     """It did not at 10 %: the salary cost more than the bonus was worth."""
-    project = _project(required_roles={Role.SALES: 1}, base_income=246, basis_fixed_costs=10)
+    project = _project(
+        required_roles={Role.SALES: 1},
+        base_income=246,
+        basis_fixed_costs=10,
+        progress=100,
+        quality=100,
+        aesthetics=100,
+    )
     sales = Worker(id="s1", role=Role.SALES, worker_type=WorkerType.HUMAN, assigned_to="p1")
-    bonus_value = project.base_income * load_tuning().sales_visibility_bonus / 100
-    assert bonus_value > load_roles().spec(Role.SALES).human_salary
+    extra_income = economy.project_income(project, [sales]) - economy.project_income(project, [])
+    assert extra_income > load_roles().spec(Role.SALES).human_salary
 
 
 def test_token_price_stays_within_swing_and_drifts_up():

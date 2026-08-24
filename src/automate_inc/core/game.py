@@ -16,7 +16,13 @@ from automate_inc import strings as S
 from automate_inc.core import economy
 from automate_inc.core.projects import Project, ProjectRegistry, load_registry
 from automate_inc.core.state import GameState, Phase
-from automate_inc.core.tech import Modifiers, TechRegistry, Technology, aggregate, load_tech_registry
+from automate_inc.core.tech import (
+    Modifiers,
+    Technology,
+    TechRegistry,
+    aggregate,
+    load_tech_registry,
+)
 from automate_inc.core.workers import Cost, Role, Worker, WorkerType, load_roles
 
 MISALIGNMENT_THRESHOLD = 20.0

@@ -68,7 +68,9 @@ ERR_GAME_OVER = "Das Spiel ist vorbei. Du kannst nichts mehr tun."
 TURN_HEADER = "Runde {turn} abgeschlossen"
 INCOME_LINE = "Einnahmen: {income:.2f} €"
 COSTS_LINE = "Kosten: {costs:.2f} € und {tokens:.0f} ♦"
-TOKENS_AUTO_BOUGHT = "{amount:.0f} ♦ automatisch nachgekauft für {cost:.2f} € — der Betrieb lief weiter."
+TOKENS_AUTO_BOUGHT = (
+    "{amount:.0f} ♦ automatisch nachgekauft für {cost:.2f} € — der Betrieb lief weiter."
+)
 PROJECT_EXPIRED = "Projekt „{name}“ ist ausgelaufen. Der Kunde bedankt sich nicht."
 TOKEN_PRICE_CHANGED = "Token-Preis: {old:.2f} € → {new:.2f} €"
 ALIGNMENT_CHANGED = "Alignment: {delta:+.0f} → {value:.0f}"
@@ -78,13 +80,16 @@ PHASE_REGRESSED = "Zurück in Phase {phase}. Die Firma ist wieder kleiner als ih
 HUMAN_ERROR_QUALITY = "{worker} hat einen Tippfehler übersehen. Qualität von „{project}“ sinkt."
 HUMAN_ERROR_AESTHETICS = "{worker} hat die Markenfarbe verwechselt. Ästhetik von „{project}“ sinkt."
 HUMAN_ERROR_MONEY = "Ein Kunde von {worker} hat sich beschwert. {amount:.0f} € Kulanz."
-HUMAN_ERROR_RESEARCH = "{worker} ist einer falschen Annahme aufgesessen. Ein Research Point weniger."
+HUMAN_ERROR_RESEARCH = (
+    "{worker} ist einer falschen Annahme aufgesessen. Ein Research Point weniger."
+)
 
 AGENT_ERROR_BUGS = "{worker} hat einen Edge Case halluziniert. „{project}“ hat jetzt mehr Bugs."
 AGENT_ERROR_QUALITY = "{worker} hat eine Abkürzung genommen. Die Qualität von „{project}“ sinkt."
 AGENT_ERROR_AESTHETICS = "{worker} hat ein Layout „optimiert“. Die Ästhetik von „{project}“ sinkt."
 AGENT_ERROR_MONEY = (
-    "{worker} hat einem Kunden etwas zugesagt, das es nicht gibt. {amount:.0f} € Schadensbegrenzung."
+    "{worker} hat einem Kunden etwas zugesagt, das es nicht gibt. "
+    "{amount:.0f} € Schadensbegrenzung."
 )
 AGENT_ERROR_RESEARCH = "{worker} hat {amount:.0f} Research Points auf eine Sackgasse verwendet."
 

@@ -29,3 +29,7 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+# The enums deliberately mix in `str`: they are serialised through `.value` into the
+# save file, and switching them to `enum.StrEnum` would change what `str(member)`
+# and f-strings produce. Not worth the risk for a style rule.
+ignore = ["UP042"]
