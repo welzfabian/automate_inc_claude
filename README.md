@@ -51,7 +51,11 @@ fälschen, ohne dass die Oberfläche den Unterschied merkt.
 
 ## Stand
 
-**Meilenstein 1 (spielbar):** Ressourcen, Menschen und Agenten der Stufe 1, vier
+Der Verlauf des Projekts ist unter [docs/milestones/](docs/milestones/) dokumentiert —
+ein Dokument pro Meilenstein mit Zielbild, Ergebnis und den Entscheidungen, die
+unterwegs nötig waren.
+
+**Meilenstein 1 ([abgeschlossen](docs/milestones/M1_VERTICAL_SLICE.md)):** Ressourcen, Menschen und Agenten der Stufe 1, vier
 Projekttypen, Rundenabrechnung, Token-Markt, Speichern/Laden, Bankrott.
 
 **Geplant:** Produkte und Upgrades, Tech-Tree, Agenten-Stufen 2 und 3, externe
@@ -63,3 +67,4 @@ Druckereignisse (Investoren, Privatleben, Markt), HR-Rolle — und der Twist.
 - [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md) – Rollen, Worker, Mechaniken
 - [docs/PROJECTS_AND_PRODUCTS_SPEC.md](docs/PROJECTS_AND_PRODUCTS_SPEC.md) – Projekt- und Produkt-System
 - [docs/BALANCING.md](docs/BALANCING.md) – wo die Implementierung von den Docs abweicht und warum
+- [docs/milestones/](docs/milestones/) – Projektverlauf, ein Dokument pro Meilenstein
