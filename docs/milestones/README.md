@@ -10,8 +10,8 @@ Teil davon war.
 | [M1](./M1_VERTICAL_SLICE.md) | Spielbarer Vertical Slice | ✅ Abgeschlossen | 24. August 2026 |
 | [M2](./M2_AUTOMATION_BITES_BACK.md) | Automatisierung beißt zurück | ✅ Abgeschlossen | 24. August 2026 |
 | [M3](./M3_SERVICE_LEVEL_AND_MAINTENANCE.md) | Servicegrad und Instandhaltung | ✅ Abgeschlossen | 24. August 2026 |
-| M4 | Zufallsereignisse *(noch nicht geplant)* | ⬜ offen | — |
-| M? | Geldsenke *(noch nicht geplant)* | ⬜ offen | — |
+| [M4](./M4_EVENTS.md) | Druck von außen: Ereignisse | 🔄 In Arbeit | — |
+| M? | Weitere Geldsenken *(noch nicht geplant)* | ⬜ offen | — |
 
 ## Offene Punkte ohne eigenen Meilenstein
 
@@ -24,12 +24,15 @@ hier, damit sie beim Planen des nächsten Meilensteins auf dem Tisch liegen.
   Technologiekosten in M3 **nicht** erhöht wurden (das wäre die falsche Antwort auf das
   richtige Problem gewesen, siehe [BALANCING.md](../BALANCING.md)). Ob das ein eigener
   Meilenstein wird oder Teil eines anderen, ist offen: Produkte, Upgrades, Bürokosten
-  und Investoren wären allesamt Kandidaten dafür.
+  und Investoren wären allesamt Kandidaten dafür. **[M4](./M4_EVENTS.md) beantwortet das
+  teilweise** — Miete, Steuern und KI-Regulierung als laufende Fixkosten —, aber
+  ausdrücklich nicht abschließend.
 - **Kunden-App und Web-App sind wirtschaftlich fast identisch** — beide fordern drei
   Stellen, und die Zielgröße hängt nur an der Stellenzahl. Eine der beiden braucht eine
   vierte Stelle oder eine andere Laufzeit.
 - **Ein Projekt, das bei Ablauf nie fertig wurde, hat keine Folgen.** Naheliegender
-  Anknüpfungspunkt für die Zufallsereignisse.
+  Anknüpfungspunkt für die Ereignisse — in [M4](./M4_EVENTS.md) als offene Frage geführt,
+  weil es streng genommen eine Projektregel ist und kein externer Druck.
 
 ## Konvention
 
