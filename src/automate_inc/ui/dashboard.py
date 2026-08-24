@@ -150,27 +150,42 @@ def team_table(game: Game) -> RenderableType:
     table.add_column("Worker")
     table.add_column(S.COL_ROLE, width=12)
     table.add_column(S.COL_TYPE, width=10)
-    table.add_column(S.COL_COST, justify="right", width=14)
+    table.add_column(S.COL_COST, justify="right", width=18)
     table.add_column(S.COL_ASSIGNMENT)
 
     for index, worker in enumerate(state.workers, start=1):
         spec = catalog.spec(worker.role)
-        cost = worker.cost_per_round(game.modifiers)
-        cost_text = (
-            Text(f"{cost.money:.0f} €", style="green")
-            if worker.is_human
-            else Text(f"{cost.tokens:.0f} ♦", style="yellow")
-        )
         project = state.project(worker.assigned_to) if worker.assigned_to else None
         table.add_row(
             str(index),
             worker_label(worker),
             spec.name,
             S.WORKER_TYPE_NAMES[worker.worker_type.value],
-            cost_text,
+            worker_cost(worker, game),
             project.name if project else Text(S.UNASSIGNED, style="dim"),
         )
     return Panel(table, title=S.HEADER_TEAM, border_style="dim")
+
+
+def worker_cost(worker: Worker, game: Game) -> Text:
+    """What this worker costs per round, in a currency the player can compare.
+
+    Agents are billed in tokens, so their euro price moves with the token market.
+    Showing the conversion here is what makes "human or agent" a decision the player
+    can read off the table instead of doing in their head - and it puts the token
+    inflation in front of them while it happens.
+
+    Neither is styled as alarming: a salary is normal. What is alarming is a project
+    whose net has gone red, and that is already in the project table.
+    """
+    cost = worker.cost_per_round(game.modifiers)
+    if worker.is_human:
+        return Text(f"{cost.money:.0f} €")
+    euro = cost.tokens * game.state.token_price
+    return Text.assemble(
+        (f"{cost.tokens:.0f} ♦", "yellow"),
+        (f"  ≈ {euro:.0f} €", "dim"),
+    )
 
 
 def worker_label(worker: Worker) -> str:
