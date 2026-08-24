@@ -10,6 +10,7 @@ from rich.text import Text
 
 from automate_inc import strings as S
 from automate_inc.core import economy
+from automate_inc.core.events import PERMANENT
 from automate_inc.core.game import Game, TurnReport, alignment_tier
 from automate_inc.core.state import GameState, Phase
 from automate_inc.core.tech import TechCategory
@@ -251,6 +252,32 @@ def research_panel(game: Game) -> RenderableType:
     return Panel(table, title=S.HEADER_RESEARCH, border_style="dim")
 
 
+def active_events_panel(game: Game) -> RenderableType | None:
+    """Running pressure, named and with its remaining duration.
+
+    Shown before the round so the player can weigh it before deciding, not
+    just read it off the balance afterwards - what has not triggered yet stays
+    hidden entirely, unlocking is not a promise.
+    """
+    if not game.state.active_events:
+        return None
+    table = Table.grid(padding=(0, 2))
+    table.add_column()
+    for effect in game.state.active_events:
+        event = game.event_registry.get(effect.event_id)
+        name = event.name if event is not None else effect.event_id
+        option = event.option(effect.option_id) if event is not None else None
+        label = option.label if option is not None else effect.option_id
+        if effect.remaining == PERMANENT:
+            line = S.ACTIVE_EVENT_LINE_PERMANENT.format(name=name, label=label)
+        else:
+            line = S.ACTIVE_EVENT_LINE_TEMPORARY.format(
+                name=name, label=label, remaining=effect.remaining
+            )
+        table.add_row(Text(line, style="yellow"))
+    return Panel(table, title=S.HEADER_ACTIVE_EVENTS, border_style="yellow")
+
+
 def agent_tone(state: GameState) -> str:
     """The acknowledgement line agents append to your orders. Cosmetic - for now."""
     return S.AGENT_ACK[alignment_tier(state.alignment)]
@@ -284,6 +311,9 @@ def render(console: Console, game: Game) -> None:
     console.print(header(game))
     console.print(projects_table(game))
     console.print(team_table(game))
+    events_panel = active_events_panel(game)
+    if events_panel is not None:
+        console.print(events_panel)
     console.print(log_panel(game.state))
     console.print(menu_panel())
 

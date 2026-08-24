@@ -4,6 +4,7 @@ import json
 
 import pytest
 
+from _helpers import advance
 from automate_inc.core.game import Game
 from automate_inc.core.state import SAVE_FORMAT_VERSION, GameState
 from automate_inc.core.workers import Role, WorkerType
@@ -18,7 +19,7 @@ def played_game(seed=11) -> Game:
     for worker in game.state.workers:
         game.assign_worker(worker.id, project_id)
     for _ in range(3):
-        game.resolve_turn()
+        advance(game)
     return game
 
 
@@ -45,8 +46,8 @@ def test_loaded_game_resolves_the_next_turn_identically(tmp_path):
     original.save(path)
 
     loaded = Game.load(path)
-    original.resolve_turn()
-    loaded.resolve_turn()
+    advance(original)
+    advance(loaded)
     assert loaded.state.to_dict() == original.state.to_dict()
 
 
@@ -87,7 +88,7 @@ def researched_game(seed=12) -> Game:
     game.start_project("static_website")
     project_id = game.state.active_projects[0].id
     game.assign_worker(game.state.workers[0].id, project_id)
-    game.resolve_turn()
+    advance(game)
     return game
 
 
@@ -112,7 +113,7 @@ def test_agent_level_and_staleness_counter_survive_the_round_trip():
     assert restored.workers[0].rounds_in_assignment == original.workers[0].rounds_in_assignment
 
 
-@pytest.mark.parametrize("old_version", [1, 2, 3])
+@pytest.mark.parametrize("old_version", [1, 2, 3, 4])
 def test_saves_from_older_formats_are_rejected(old_version):
     """Each version lost a field the next one has. No migration path on purpose."""
     data = researched_game().state.to_dict()
@@ -121,8 +122,8 @@ def test_saves_from_older_formats_are_rejected(old_version):
         GameState.from_dict(data)
 
 
-def test_the_current_save_format_is_version_four():
-    assert SAVE_FORMAT_VERSION == 4
+def test_the_current_save_format_is_version_five():
+    assert SAVE_FORMAT_VERSION == 5
 
 
 def test_project_service_level_survives_the_round_trip():

@@ -14,6 +14,18 @@ from pathlib import Path
 
 from automate_inc import strings as S
 from automate_inc.core import economy
+from automate_inc.core.events import (
+    ActiveEffect,
+    Event,
+    EventContext,
+    EventOption,
+    EventRegistry,
+    EventTuning,
+    Pressure,
+    aggregate_pressure,
+    load_event_registry,
+    load_event_tuning,
+)
 from automate_inc.core.projects import Project, ProjectRegistry, load_registry
 from automate_inc.core.state import GameState, Phase
 from automate_inc.core.tech import (
@@ -57,6 +69,9 @@ class TurnReport:
     money_before: float = 0.0
     money_after: float = 0.0
     events: list[str] = field(default_factory=list)
+    blocked: bool = False
+    """True when an open event decision refused the whole turn - nothing else
+    on this report is meaningful, and the state was left untouched."""
 
     @property
     def net(self) -> float:
@@ -96,10 +111,14 @@ class Game:
         registry: ProjectRegistry | None = None,
         seed: int | None = None,
         tech_registry: TechRegistry | None = None,
+        event_registry: EventRegistry | None = None,
     ) -> None:
         self.state = state if state is not None else GameState()
         self.registry = registry if registry is not None else load_registry()
         self.tech_registry = tech_registry if tech_registry is not None else load_tech_registry()
+        self.event_registry = (
+            event_registry if event_registry is not None else load_event_registry()
+        )
         if seed is not None:
             self.state.rng_seed = seed
         self._counter = len(self.state.workers) + len(self.state.active_projects)
@@ -138,6 +157,15 @@ class Game:
         turns, and the aggregate is cheap.
         """
         return aggregate(self.tech_registry.resolve(self.state.researched))
+
+    @property
+    def pressure(self) -> Pressure:
+        """Everything currently running from events, folded into one value object.
+
+        Recomputed on access, like ``modifiers`` - an answered decision can add
+        or remove pressure between turns and the aggregate is cheap.
+        """
+        return aggregate_pressure(self.event_registry.resolve_active(self.state.active_events))
 
     def available_technologies(self) -> list[Technology]:
         return [
@@ -352,6 +380,57 @@ class Game:
         self.state.tokens += amount
         return ActionResult.success(S.TOKENS_BOUGHT.format(amount=amount, cost=cost))
 
+    def answer_event(self, event_id: str, option_id: str) -> ActionResult:
+        """Resolve one open decision. Validates before it mutates, like every action.
+
+        An event fires effects only here, never at the moment it triggers -
+        that is what makes it a decision instead of an ambush.
+        """
+        if (blocked := self._guard()) is not None:
+            return blocked
+        if event_id not in self.state.pending_decisions:
+            return ActionResult.failure(S.ERR_UNKNOWN_EVENT_DECISION)
+        event = self.event_registry.get(event_id)
+        if event is None:
+            # The catalog lost this event between save and load; there is
+            # nothing left to decide, so drop it rather than block forever.
+            self.state.pending_decisions.remove(event_id)
+            return ActionResult.success(S.EVENT_DECISION_GONE)
+        option = event.option(option_id)
+        if option is None:
+            return ActionResult.failure(S.ERR_UNKNOWN_EVENT_OPTION)
+        self.state.pending_decisions.remove(event_id)
+        message = self._apply_event_option(event, option)
+        return ActionResult.success(
+            S.EVENT_RESOLVED.format(name=event.name, label=option.label, effect=message)
+        )
+
+    def _apply_event_option(self, event: Event, option: EventOption) -> str:
+        """Book an option's effects and return a human-readable summary of them."""
+        parts: list[str] = []
+        if option.is_instant:
+            for key, amount in option.effects.items():
+                if key == "money":
+                    self.state.money += amount
+                    parts.append(f"{amount:+.2f} €")
+                elif key == "research":
+                    self.state.research = max(0, self.state.research + int(amount))
+                    parts.append(f"{amount:+.0f} 🔬")
+                elif key == "tokens":
+                    self.state.tokens = max(0.0, self.state.tokens + amount)
+                    parts.append(f"{amount:+.0f} ♦")
+                elif key == "alignment":
+                    self.state.alignment = max(
+                        ALIGNMENT_MIN, min(ALIGNMENT_MAX, self.state.alignment + amount)
+                    )
+                    parts.append(f"{amount:+.0f} ⚖")
+        else:
+            self.state.active_events.append(
+                ActiveEffect(event_id=event.id, option_id=option.id, remaining=option.duration)
+            )
+            parts.append(S.EVENT_EFFECT_STARTED)
+        return ", ".join(parts) if parts else S.EVENT_NO_EFFECT
+
     def save(self, path: Path) -> ActionResult:
         self.state.save(path)
         return ActionResult.success(S.GAME_SAVED.format(path=path))
@@ -373,21 +452,34 @@ class Game:
     # -- turn resolution -----------------------------------------------------
 
     def resolve_turn(self) -> TurnReport:
+        if self.state.pending_decisions and not self.state.is_over:
+            # Unavoidable, but answerable: the round refuses to advance while a
+            # decision is open, and nothing below runs - the state stays
+            # byte-identical, exactly like a failed action. Once the game is
+            # over there is nothing left to force an answer for - and
+            # ``answer_event`` itself refuses once ``is_over``, so without this
+            # a decision left open by the very round that ended the game would
+            # block forever with no way to clear it.
+            return TurnReport(turn=self.state.turn, blocked=True)
+
         report = TurnReport(turn=self.state.turn, money_before=self.state.money)
         rng = self._turn_rng()
-        # Aggregated once so every step of this turn sees the same tech state,
-        # even if a later step were to change what is researched.
+        # Aggregated once so every step of this turn sees the same tech and
+        # pressure state, even if a later step were to change either.
         modifiers = self.modifiers
+        pressure = self.pressure
 
         self._advance_service_level()
         self._apply_worker_effects(modifiers)
         self._apply_side_effects(report, rng, modifiers)
-        self._update_alignment(report, modifiers)
-        report.income = self._calculate_income(modifiers)
-        money_costs, token_costs = self._calculate_costs(modifiers)
+        self._update_alignment(report, modifiers, pressure)
+        report.income = self._calculate_income(modifiers, pressure)
+        money_costs, token_costs = self._calculate_costs(modifiers, pressure)
         report.costs_money = money_costs
         report.costs_tokens = token_costs
         self._settle(report)
+        self._trigger_events(report, rng)
+        self._age_events(report)
         self._update_token_price(report, rng)
         self._advance_projects(report)
 
@@ -396,6 +488,7 @@ class Game:
         self._check_game_over(report)
 
         report.money_after = self.state.money
+        self.state.last_net = report.net
         self.state.log = list(report.events)
         return report
 
@@ -479,10 +572,12 @@ class Game:
                 )
             )
 
-    def _update_alignment(self, report: TurnReport, modifiers: Modifiers) -> None:
+    def _update_alignment(
+        self, report: TurnReport, modifiers: Modifiers, pressure: Pressure
+    ) -> None:
         """Alignment is deterministic (BALANCING.md 8) so the player can read it."""
         tier_before = alignment_tier(self.state.alignment)
-        delta = economy.alignment_delta(self.state.workers, modifiers)
+        delta = economy.alignment_delta(self.state.workers, modifiers, pressure)
         report.alignment_delta = delta
         self.state.alignment = max(
             ALIGNMENT_MIN, min(ALIGNMENT_MAX, self.state.alignment + delta)
@@ -495,16 +590,18 @@ class Game:
         if tier_after > tier_before and tier_after in S.ALIGNMENT_WARNINGS:
             report.events.append(S.ALIGNMENT_WARNINGS[tier_after])
 
-    def _calculate_income(self, modifiers: Modifiers) -> float:
+    def _calculate_income(self, modifiers: Modifiers, pressure: Pressure) -> float:
         return sum(
-            economy.project_income(project, self.state.workers, modifiers)
+            economy.project_income(project, self.state.workers, modifiers, pressure)
             for project in self.state.active_projects
         )
 
-    def _calculate_costs(self, modifiers: Modifiers) -> tuple[float, float]:
+    def _calculate_costs(self, modifiers: Modifiers, pressure: Pressure) -> tuple[float, float]:
         total: Cost = economy.idle_worker_costs(self.state.workers, modifiers)
         for project in self.state.active_projects:
             total = total + economy.project_costs(project, self.state.workers, modifiers)
+        total = Cost(money=total.money * pressure.cost_multiplier, tokens=total.tokens)
+        total = total + economy.pressure_costs(self.state.workers, pressure)
         return total.money, total.tokens
 
     def _settle(self, report: TurnReport) -> None:
@@ -520,6 +617,67 @@ class Game:
             report.tokens_auto_bought = shortfall
             report.auto_buy_cost = cost
             report.events.append(S.TOKENS_AUTO_BOUGHT.format(amount=shortfall, cost=cost))
+
+    def _event_context(self) -> EventContext:
+        agents = sum(1 for w in self.state.workers if not w.is_human)
+        humans = sum(1 for w in self.state.workers if w.is_human)
+        return EventContext(
+            turn=self.state.turn,
+            money=self.state.money,
+            alignment=self.state.alignment,
+            unlocked_agent_level=self.modifiers.unlocked_agent_level,
+            agents=agents,
+            humans=humans,
+            projects=len(self.state.active_projects),
+            last_net=self.state.last_net,
+            triggered=frozenset(self.state.event_history),
+        )
+
+    def _cooldown_ok(self, event: Event, tuning: EventTuning) -> bool:
+        last = self.state.event_last_turn.get(event.id)
+        return last is None or self.state.turn - last >= tuning.base_cooldown_turns
+
+    def _trigger_events(self, report: TurnReport, rng: random.Random) -> None:
+        """Roll the pool of unlocked, not-yet-pending events for this round.
+
+        Triggering only opens a decision - effects come from ``answer_event``,
+        never from here. That keeps this step from mutating money, tokens or
+        alignment, so a blocked ``resolve_turn`` never has to undo it.
+        """
+        ctx = self._event_context()
+        tuning = load_event_tuning()
+        pool = [
+            event
+            for event in self.event_registry.all()
+            if event.id not in self.state.pending_decisions
+            and self.event_registry.is_available(event, ctx)
+            and not (event.once and event.id in self.state.event_history)
+            and self._cooldown_ok(event, tuning)
+        ]
+        triggered = 0
+        for event in pool:
+            if triggered >= tuning.max_events_per_turn:
+                break
+            if rng.random() < event.chance * tuning.chance_scale:
+                self.state.pending_decisions.append(event.id)
+                self.state.event_history.append(event.id)
+                self.state.event_last_turn[event.id] = self.state.turn
+                triggered += 1
+                report.events.append(S.EVENT_TRIGGERED.format(name=event.name))
+
+    def _age_events(self, report: TurnReport) -> None:
+        """Temporary pressure counts down by one round; permanent pressure never does."""
+        surviving: list[ActiveEffect] = []
+        for effect in self.state.active_events:
+            if effect.remaining > 0:
+                effect = ActiveEffect(effect.event_id, effect.option_id, effect.remaining - 1)
+                if effect.remaining == 0:
+                    event = self.event_registry.get(effect.event_id)
+                    name = event.name if event is not None else effect.event_id
+                    report.events.append(S.EVENT_EFFECT_ENDED.format(name=name))
+                    continue
+            surviving.append(effect)
+        self.state.active_events = surviving
 
     def _update_token_price(self, report: TurnReport, rng: random.Random) -> None:
         old = self.state.token_price

@@ -2,6 +2,7 @@
 
 import pytest
 
+from _helpers import advance
 from automate_inc.core import economy
 from automate_inc.core.game import Game
 from automate_inc.core.state import GameState, Phase
@@ -31,22 +32,22 @@ def test_developer_raises_quality_and_it_is_capped_at_100():
     game = staffed_game()
     project = game.state.active_projects[0]
     for _ in range(10):
-        game.resolve_turn()
+        advance(game)
     assert project.quality == 100.0
 
 
 def test_researcher_produces_research_points_without_a_project():
     game = Game(seed=1)
     game.hire_worker(Role.RESEARCHER, WorkerType.HUMAN)
-    game.resolve_turn()
+    advance(game)
     assert game.state.research == 2
 
 
 def test_agents_are_more_efficient_than_humans():
     human = staffed_game(worker_type=WorkerType.HUMAN)
     agent = staffed_game(worker_type=WorkerType.AGENT)
-    human.resolve_turn()
-    agent.resolve_turn()
+    advance(human)
+    advance(agent)
     assert agent.state.active_projects[0].quality > human.state.active_projects[0].quality
 
 
@@ -54,7 +55,7 @@ def test_project_expires_after_its_lifetime_and_frees_its_workers():
     game = staffed_game()
     lifetime = game.state.active_projects[0].lifetime
     for _ in range(lifetime):
-        game.resolve_turn()
+        advance(game)
     assert game.state.active_projects == []
     assert all(w.assigned_to is None for w in game.state.workers)
 
@@ -62,7 +63,7 @@ def test_project_expires_after_its_lifetime_and_frees_its_workers():
 def test_tokens_are_auto_bought_when_the_balance_runs_dry():
     game = staffed_game(worker_type=WorkerType.AGENT)
     game.state.tokens = 1.0
-    report = game.resolve_turn()
+    report = advance(game)
     assert report.tokens_auto_bought > 0
     assert report.auto_buy_cost > 0
     assert game.state.tokens == 0.0
@@ -72,7 +73,7 @@ def test_bankruptcy_ends_the_game():
     game = Game(seed=1)
     game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN)  # 80 EUR/round, no income
     game.state.money = 10.0
-    report = game.resolve_turn()
+    report = advance(game)
     assert game.state.is_over
     assert "BANKROTT" in (game.state.game_over_reason or "")
     assert any("BANKROTT" in event for event in report.events)
@@ -95,7 +96,7 @@ def test_turns_alone_never_change_the_phase():
     game = Game(seed=1)
     game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN)
     for _ in range(15):
-        game.resolve_turn()
+        advance(game)
     assert game.phase is Phase.BUILDUP
 
 
@@ -165,16 +166,16 @@ def test_the_phase_falls_back_when_the_agents_are_fired():
 
 def test_phase_change_is_reported():
     game = scaled_company()
-    report = game.resolve_turn()
+    report = advance(game)
     assert any("Skalierung" in event for event in report.events)
 
 
 def test_falling_back_a_phase_reads_differently_from_advancing():
     game = scaled_company()
-    game.resolve_turn()
+    advance(game)
     for worker in [w for w in game.state.workers if not w.is_human]:
         game.fire_worker(worker.id)
-    report = game.resolve_turn()
+    report = advance(game)
     assert any("Zurück in Phase" in event for event in report.events)
 
 
@@ -182,8 +183,8 @@ def test_turn_resolution_is_deterministic_for_a_given_seed():
     first = staffed_game(seed=99)
     second = staffed_game(seed=99)
     for _ in range(8):
-        first.resolve_turn()
-        second.resolve_turn()
+        advance(first)
+        advance(second)
     assert first.state.to_dict() == second.state.to_dict()
 
 
@@ -251,7 +252,7 @@ def run_solvent(game: Game, turns: int) -> list[str]:
     for _ in range(turns):
         game.state.money = 100_000.0
         game.state.tokens = 10_000.0
-        events.extend(game.resolve_turn().events)
+        events.extend(advance(game).events)
     return events
 
 

@@ -1,8 +1,8 @@
 # M4 — Druck von außen: Ereignisse
 
-**Status:** 🔄 In Arbeit
+**Status:** ✅ Abgeschlossen
 **Geplant:** 24. August 2026
-**Abgeschlossen:** —
+**Abgeschlossen:** 24. August 2026
 
 ## Warum
 
@@ -256,7 +256,33 @@ sind Katalogdaten wie Projekt- und Technologienamen, die auch schon dort stehen.
 8. Simulation und Kalibrierung der Geldsenke
 9. Doku: `BALANCING.md` Nr. 16 ff., dieses Dokument, README
 
-## Testlage (geplant)
+## Ergebnis
+
+Umgesetzt wie geplant, mit drei Abweichungen — Details in
+[BALANCING.md](../BALANCING.md) Nr. 16–19:
+
+- Effekte entstehen ausschließlich in `answer_event`, nie beim Auslösen (Nr. 16) —
+  eine Klarstellung eines Widerspruchs zwischen Abschnitt 4 und 6 oben, keine
+  Planänderung.
+- `resolve_turn()` blockiert nur, während das Spiel noch läuft (Nr. 17) — sonst
+  könnte eine `PendingDecision` aus der Runde, die das Spiel beendet, es für immer
+  einfrieren.
+- Der Katalog wurde auf 13 Ereignisse über alle vier Kategorien reduziert (Nr. 18) —
+  von der Spec ausdrücklich für die Investoren-Kategorie erlaubt, hier auf alle vier
+  angewendet, weil die Mechanik konfigurationsgetrieben ist.
+
+Save-Format 5 wie geplant. `menu.end_turn()` beantwortet offene Entscheidungen vor
+jedem Rundenversuch; das Dashboard zeigt laufenden Druck im Panel „Laufende
+Ereignisse" mit Restlaufzeit. Die Geldsenke ist kalibriert und simuliert (Nr. 19),
+nicht geraten — bewusst weiterhin nicht abschließend, siehe
+[README](./README.md).
+
+Die drei „Offenen Fragen" von oben: `max_events_per_turn: 1` beantwortet die zweite
+(mehr als eine Entscheidung pro Runde wäre spielbar, aber ungetestet). Die erste
+(Projekt läuft ohne Fertigstellung ab) bleibt offen, siehe README. Die dritte
+(Ereignisse mit Ablaufdatum für die Antwort) bleibt bewusst außerhalb von M4.
+
+## Testlage
 
 `tests/test_events.py`, mit den Eigenschaften, an denen die Mechanik hängt:
 

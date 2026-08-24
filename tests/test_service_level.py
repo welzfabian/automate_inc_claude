@@ -2,6 +2,7 @@
 
 import pytest
 
+from _helpers import NO_EVENTS, advance
 from automate_inc.core import economy
 from automate_inc.core.game import Game
 from automate_inc.core.projects import load_tuning
@@ -14,9 +15,11 @@ def project_game(blueprint_id="ecommerce_shop", staffing=None, seed=4) -> Game:
     """Start a project, then staff exactly the posts named in ``staffing``.
 
     A throwaway human starts the project and is fired again, so that an
-    understaffed scenario really is understaffed.
+    understaffed scenario really is understaffed. Events are disabled: this
+    file measures the plain economy, and a random event would show up as
+    unexplained noise in a same-seed comparison between two staffings.
     """
-    game = Game(seed=seed)
+    game = Game(seed=seed, event_registry=NO_EVENTS)
     game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN)
     starter = game.state.workers[0]
     assert game.start_project(blueprint_id).ok
@@ -34,7 +37,7 @@ def play(game: Game, turns: int) -> float:
     total = 0.0
     for _ in range(turns):
         game.state.money = 100_000.0
-        total += game.resolve_turn().net
+        total += advance(game).net
     return total / turns
 
 

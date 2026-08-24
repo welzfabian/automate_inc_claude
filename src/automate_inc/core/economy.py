@@ -5,12 +5,16 @@ from __future__ import annotations
 import random
 from collections.abc import Iterable
 
+from automate_inc.core.events import Pressure
 from automate_inc.core.projects import Project, load_tuning
 from automate_inc.core.tech import Modifiers
 from automate_inc.core.workers import Cost, Role, Worker, load_roles
 
 NO_MODIFIERS = Modifiers()
 """Neutral modifiers, so every function here stays callable without a tech tree."""
+
+NO_PRESSURE = Pressure()
+"""Neutral pressure, so every function here stays callable without any events."""
 
 ROLE_ATTRIBUTES = {Role.DEVELOPER: "quality", Role.DESIGNER: "aesthetics"}
 """Which role holds which project attribute - and therefore caps it. Sales holds
@@ -123,17 +127,22 @@ def project_income(
     project: Project,
     workers: Iterable[Worker],
     modifiers: Modifiers = NO_MODIFIERS,
+    pressure: Pressure = NO_PRESSURE,
 ) -> float:
     workers = list(workers)
-    return calculate_income(
-        base_income=project.base_income,
-        service_level=project.service_level,
-        quality=project.quality,
-        aesthetics=project.aesthetics,
-        bugs=project.bugs,
-        visibility_bonus=visibility_bonus_for(project, workers),
-        aesthetics_applies=project.requires(Role.DESIGNER),
-    ) * modifiers.income_multiplier
+    return (
+        calculate_income(
+            base_income=project.base_income,
+            service_level=project.service_level,
+            quality=project.quality,
+            aesthetics=project.aesthetics,
+            bugs=project.bugs,
+            visibility_bonus=visibility_bonus_for(project, workers),
+            aesthetics_applies=project.requires(Role.DESIGNER),
+        )
+        * modifiers.income_multiplier
+        * pressure.income_multiplier
+    )
 
 
 def project_costs(
@@ -141,7 +150,8 @@ def project_costs(
     workers: Iterable[Worker],
     modifiers: Modifiers = NO_MODIFIERS,
 ) -> Cost:
-    """Fixed costs plus everyone assigned to this project."""
+    """Fixed costs plus everyone assigned to this project. Pressure's own cost
+    fields are company-wide, not per project, and are added in ``pressure_costs``."""
     total = Cost(money=float(project.basis_fixed_costs))
     for worker in workers:
         if worker.assigned_to == project.id:
@@ -158,6 +168,17 @@ def idle_worker_costs(workers: Iterable[Worker], modifiers: Modifiers = NO_MODIF
     return total
 
 
+def pressure_costs(workers: Iterable[Worker], pressure: Pressure = NO_PRESSURE) -> Cost:
+    """Rent, taxes, regulation: costs pressure adds on top, company-wide.
+
+    ``fixed_cost`` applies once regardless of headcount (rent does not care how
+    many agents you run); ``cost_per_agent`` scales with the fleet on purpose -
+    it is how the AI-specific events (a per-agent tax) become a real cost.
+    """
+    agents = sum(1 for w in workers if not w.is_human)
+    return Cost(money=pressure.fixed_cost + pressure.cost_per_agent * agents)
+
+
 AGENT_ALIGNMENT_DECAY = {1: 0.0, 2: -1.0, 3: -3.0}
 """Alignment lost per agent and round, by level. BALANCING.md 7: the decay hangs
 on the level, never on the role."""
@@ -166,7 +187,11 @@ HUMAN_ALIGNMENT_GAIN = 1.0
 """BALANCING.md 9: humans slow the decay, they do not stop it."""
 
 
-def alignment_delta(workers: Iterable[Worker], modifiers: Modifiers = NO_MODIFIERS) -> float:
+def alignment_delta(
+    workers: Iterable[Worker],
+    modifiers: Modifiers = NO_MODIFIERS,
+    pressure: Pressure = NO_PRESSURE,
+) -> float:
     """The alignment balance for one round - deterministic and readable.
 
     BALANCING.md 8: there is no random base decay. The player must be able to
@@ -175,13 +200,19 @@ def alignment_delta(workers: Iterable[Worker], modifiers: Modifiers = NO_MODIFIE
     The decay from agents is dampened by alignment research, the gains are not.
     A dampener scales with the size of the fleet where a flat bonus would not -
     which is what makes "research alignment" a real answer to "hire humans", and
-    what makes it deepen the dependency instead of ending it.
+    what makes it deepen the dependency instead of ending it. Event pressure adds
+    on top, undampened - it is not a consequence of fleet size.
     """
     decay = sum(
         AGENT_ALIGNMENT_DECAY.get(w.level, 0.0) for w in workers if not w.is_human
     )
     gain = sum(HUMAN_ALIGNMENT_GAIN for w in workers if w.is_human)
-    return decay * modifiers.alignment_decay_multiplier + gain + modifiers.alignment_per_round
+    return (
+        decay * modifiers.alignment_decay_multiplier
+        + gain
+        + modifiers.alignment_per_round
+        + pressure.alignment_per_round
+    )
 
 
 def next_token_price(price: float, rng: random.Random) -> float:

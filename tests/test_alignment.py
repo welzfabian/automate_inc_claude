@@ -2,6 +2,7 @@
 
 import pytest
 
+from _helpers import advance
 from automate_inc.core.economy import alignment_delta
 from automate_inc.core.game import MISALIGNMENT_THRESHOLD, Game, alignment_tier
 from automate_inc.core.state import START_ALIGNMENT
@@ -38,7 +39,7 @@ def test_an_empty_company_has_no_drift():
 def test_a_pure_human_team_never_loses_alignment():
     game = game_with(humans=3)
     for _ in range(10):
-        game.resolve_turn()
+        advance(game)
     assert game.state.alignment == START_ALIGNMENT
 
 
@@ -119,14 +120,14 @@ def test_dangerous_technologies_cost_alignment_even_without_agents():
 
 def test_the_balance_is_applied_once_per_turn_and_reported():
     game = game_with(level_2=2)
-    report = game.resolve_turn()
+    report = advance(game)
     assert report.alignment_delta == pytest.approx(-2.0)
     assert game.state.alignment == pytest.approx(START_ALIGNMENT - 2.0)
 
 
 def test_alignment_is_capped_at_one_hundred():
     game = game_with(humans=5)
-    game.resolve_turn()
+    advance(game)
     assert game.state.alignment == START_ALIGNMENT
 
 
@@ -136,7 +137,7 @@ def test_alignment_is_capped_at_one_hundred():
 def test_falling_below_the_threshold_ends_the_game():
     game = game_with(level_3=1)
     game.state.alignment = MISALIGNMENT_THRESHOLD + 1
-    report = game.resolve_turn()
+    report = advance(game)
     assert game.state.is_over
     assert "KONTROLLVERLUST" in game.state.game_over_reason
     assert game.state.game_over_reason in report.events
@@ -145,14 +146,14 @@ def test_falling_below_the_threshold_ends_the_game():
 def test_staying_at_the_threshold_does_not_end_the_game():
     game = game_with(humans=1)
     game.state.alignment = MISALIGNMENT_THRESHOLD
-    game.resolve_turn()
+    advance(game)
     assert not game.state.is_over
 
 
 def test_actions_are_refused_once_alignment_ended_the_game():
     game = game_with(level_3=1)
     game.state.alignment = MISALIGNMENT_THRESHOLD
-    game.resolve_turn()
+    advance(game)
     assert game.state.is_over
     assert not game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN).ok
 

@@ -212,8 +212,32 @@ class Menu:
             return self.note(S.ERR_INVALID_AMOUNT, style="red")
         self.show(self.game.buy_tokens(int(raw)))
 
+    def _answer_pending_decisions(self) -> None:
+        """Unavoidable: the round will not resolve while one of these is open."""
+        while self.game.state.pending_decisions:
+            event_id = self.game.state.pending_decisions[0]
+            event = self.game.event_registry.get(event_id)
+            if event is None:
+                # The catalog lost this event since it triggered; answer_event
+                # itself drops a decision it cannot find anything for.
+                self.game.answer_event(event_id, "")
+                continue
+            self.console.print()
+            self.console.print(Text(S.EVENT_DECISION_HEADER.format(name=event.name), style="bold"))
+            self.console.print(Text(event.description, style="dim"))
+            option_id = self.choose(
+                event.name, [(o.id, o.label) for o in event.options]
+            )
+            if option_id is None:
+                continue  # not answerable away - it blocks the turn either way
+            self.show(self.game.answer_event(event_id, option_id))
+
     def end_turn(self) -> None:
+        self._answer_pending_decisions()
         report = self.game.resolve_turn()
+        if report.blocked:
+            self.note(S.TURN_BLOCKED, style="red")
+            return
         self.console.print()
         self.console.print(dashboard.turn_summary(report))
         for event in report.events:
