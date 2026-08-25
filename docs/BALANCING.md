@@ -443,36 +443,74 @@ selbstbegrenzenden Nettogewinn-Logik unterliegt wie der Startwert.
 
 # Meilenstein 7
 
-## 22. Die beiden neuen Enden führen keinen eigenen Schwellenwert ein
+## 22. Die Vollautomatisierungs-Enden hängen an der Stufe, nicht an der Kopfzahl
 
-`_total_automation` (0 Menschen, Agentenflotte ≥ `AUTONOMY_AGENT_COUNT`) und die Aufteilung
-in "Dystopie" gegen "Geheimes Ende" bei `ALIGNMENT_TIERS[0]` (80.0) verwenden ausschließlich
-Konstanten, die schon vor M7 kalibriert waren: `AUTONOMY_AGENT_COUNT = 6` bestimmt seit M1/M2
-die Autonomie-Phase (`GameState.phase()`), und `ALIGNMENT_TIERS[0]` ist die Schwelle, unter
-der `ALIGNMENT_WARNINGS` überhaupt zum ersten Mal etwas anzeigt. M7 führt deshalb keine neue
-Elf-Seeds-Simulation wie M2–M4 — es gibt keine neue Zahl zu kalibrieren, nur eine neue
-Kombination zweier bestehender. Wie M5 (Eintrag 20) für seine beiden optionalen Mechaniken
-begründet: Ein Abgleich gegen die bereits belegten Größenordnungen genügt, wenn der Eingriff
-selbst keine neuen Parameter mitbringt.
+**Der Fehler:** Die erste Fassung von `_total_automation` verlangte „0 Menschen und
+≥ `AUTONOMY_AGENT_COUNT` Agenten" — ohne Rücksicht auf deren Stufe. Begründet wurde das mit
+einer Regel, die in diesem Fall nicht trägt: Beide verwendeten Konstanten
+(`AUTONOMY_AGENT_COUNT = 6`, `ALIGNMENT_TIERS[0] = 80`) waren bereits kalibriert, also
+schien es nichts Neues zu kalibrieren zu geben. Übernommen wurde aber nur die *Zahl*, nicht
+ihre *Aussage*: `AUTONOMY_AGENT_COUNT` beschreibt in `GameState.phase()` eine Phase („du hast
+skaliert"), und skalieren ist absichtlich früh und billig möglich. Es beschreibt nicht „die
+KI hat dich ersetzt".
 
-**Worauf das Ergebnis empfindlich reagiert und worauf nicht:** Da `_total_automation`
-`AUTONOMY_AGENT_COUNT` unverändert wiederverwendet, tritt eines der beiden neuen Enden nie
-früher ein als die Autonomie-Phase selbst schon erreichbar ist (siehe M2s Simulation:
-Runde 7–10 für Stufe 2, 17–23 für Stufe 3) — ein Vollautomatisierungs-Ende vor Runde ~7 ist
-mit der aktuellen Fleet-Ökonomie nicht erreichbar. Die Aufteilung bei Alignment 80 ist streng
-deterministisch (kein RNG, BALANCING.md 8) und bewusst *nicht* symmetrisch gewählt: Da Level-2-
-Agenten schon −1/Runde und Level-3-Agenten −3/Runde kosten (Nr. 7), braucht eine Sechs-Agenten-
-Flotte aktives Gegensteuern (Menschen, `ai_alignment`-Forschung, das neue
-`full_automation_warning`), um überhaupt bei ≥ 80 anzukommen — das "Geheime Ende" ist damit die
-seltenere, nicht die leichtere der beiden Varianten.
+**Was die Simulation zeigte** (Skript nicht Teil der Suite, elf Seeds):
+
+- **Runde 0, jeder Seed.** Sechs Level-1-Agenten kosten rund 255 € von 1.000 € Startkapital
+  und **keinerlei Forschung**. Wer sie einstellt und den Startmenschen feuert, bekommt auf
+  Runde 0 „FALSCHE HOFFNUNG. Nach **0** Runden…" — das Ende, das laut
+  [VISION.md](./VISION.md) das seltene sein soll, als Eröffnungszug.
+- **Das Dystopie-Ende feuerte in keinem einzigen Lauf.** Jeder simulierte Lauf, der
+  Vollautomatisierung erreichte (bei normalem Spiel Runde 12–18), tat das bei Alignment
+  **100,0** → immer das geheime Ende. Der Grund ist strukturell und kein Zufall der Politik:
+  Level-1-Agenten haben per Design null Alignment-Verfall (Nr. 7) — „0 Menschen + billige
+  Flotte" fällt deshalb *immer* mit hohem Alignment zusammen. Die als „überschneidungsfreie
+  Partition" beschriebene Aufteilung war praktisch ein einziger Zweig.
+
+**Auflösung:** `AUTONOMOUS_AGENT_LEVEL = 2` — nur Agenten ab Stufe 2 zählen auf die
+Flottengröße ein. Das trifft genau die Stelle, an der VISION.md die Harmlosigkeit endet
+(Stufe 1: keine Nebeneffekte, kein Alignment-Preis; ab Stufe 2 beides). Runde 0 ist damit
+tot, weil Stufe 2 `ai_intelligence_2` (30 RP) voraussetzt, und der naive
+„alles-automatisieren"-Lauf endet jetzt in Runde 3–6 im Bankrott statt im Twist.
+
+**Was das für die Aufteilung bedeutet** (deterministisch, daher ohne Seeds belastbar — sechs
+Level-2-Agenten, kein Mensch, Verfall −6/Runde bzw. −3 mit `ai_alignment`):
+
+| | Runden im Fenster ≥ 80 (geheim) | Runden im Fenster 20–79 (Dystopie) |
+|---|---|---|
+| ohne `ai_alignment` | 3 | 10 |
+| mit `ai_alignment` | 6 | 20 |
+
+Beide Enden sind damit erreichbar, Dystopie ist der Normalfall und das geheime Ende das
+schmale Fenster — und es bedeutet endlich etwas: Es geht an den Spieler, der *so schnell*
+automatisiert, dass das Alignment noch nicht nachgezogen hat. Das ist genau die „falsche
+Hoffnung", die VISION.md beschreibt, und es fällt mit deren Ironie zusammen („je besser der
+Spieler automatisiert, desto schneller kommt der Twist").
+
+**Nicht behauptet:** Die verwendeten Simulationspolitiken spielen schwach — die meisten Läufe
+enden im Bankrott, und ein Start mit vier Menschen ist wegen des Bürodeckels aus M5 gar nicht
+finanzierbar. Über die *Häufigkeit* der beiden Enden in einer real gespielten Partie sagt
+diese Simulation deshalb nichts; belastbar sind nur die drei strukturellen Befunde oben
+(Runde-0-Erreichbarkeit, das an 100 festgenagelte Alignment einer Level-1-Flotte, und die
+deterministischen Fenster in der Tabelle).
+
+**Die Lehre für künftige Meilensteine:** Eine bereits kalibrierte Konstante wiederzuverwenden
+ist *kein* Ersatz für eine Simulation. Was kalibriert war, ist die Zahl in ihrem
+ursprünglichen Kontext — hier eine Phasengrenze. Sobald sie eine andere Frage beantworten
+soll, ist sie eine neue Zahl.
 
 ## 23. `full_automation_warning` bleibt ein ehrliches Angebot, keine Blockade
 
-Die Vorwarnung (6 Agenten, höchstens 1 Mensch) kostet in der teureren Option 200 € für
-+3 Alignment, in der billigeren −3 Alignment für nichts — bewusst kleiner dimensioniert als
-`ai_ethics_debate` (300 € / ±5, Nr. siehe `data/events.json`), weil das Ereignis nur einmal pro
-Partie feuern kann (`once: true`) und rein als Vorbote gedacht ist, nicht als Stellschraube.
-Keine der beiden Optionen verändert Personal oder verhindert die Enden — wer danach trotzdem
-den letzten Menschen feuert, bekommt eines der beiden neuen Enden wie vorgesehen. Nicht separat
-simuliert: Der Effekt ist zu klein, um die Alignment-Schwelle 80 in der Praxis zu verschieben
-(±3 gegen einen laufenden Verfall von −1 bis −3/Runde bei sechs Agenten).
+Die Vorwarnung kostet in der teureren Option 200 € für +3 Alignment, in der billigeren
+−3 Alignment für nichts — bewusst kleiner dimensioniert als `ai_ethics_debate` (300 € / ±5),
+weil das Ereignis nur einmal pro Partie feuern kann (`once: true`) und rein als Vorbote
+gedacht ist, nicht als Stellschraube. Keine der beiden Optionen verändert Personal oder
+verhindert die Enden.
+
+**Offen:** Die Bedingung (`min_agents: 6, max_humans: 1`) zählt weiterhin Agenten *jeder*
+Stufe, im Gegensatz zum Ende selbst nach Nr. 22. Das ist bewusst so gelassen — als Warnung
+darf das Ereignis früher und großzügiger greifen als das Ende, vor dem es warnt; eine Flotte
+aus sechs Level-1-Agenten neben dem letzten Menschen ist genau die Lage, in der die Frage
+„wofür wirst du noch gebraucht?" sitzt, auch wenn sie noch kein Spielende auslöst. Sollte
+sich das im Spiel als zu geschwätzig erweisen, ist es ein Zahlenwechsel in
+`data/events.json`, keine Code-Änderung.

@@ -113,16 +113,29 @@ class EndCondition:
         return bool(self.predicate(state))  # type: ignore[operator]
 
 
-def _total_automation(state: GameState) -> bool:
-    """No human left, and the fleet is large enough to run the company alone.
+AUTONOMOUS_AGENT_LEVEL = 2
+"""The lowest level that counts towards replacing the company.
 
-    Reuses ``AUTONOMY_AGENT_COUNT`` - the same fleet size ``GameState.phase()``
-    already treats as "outnumbers the founder" - rather than inventing a new
-    threshold for the ending that phase already describes.
+Level 1 agents are the harmless tier by design - no side effects, no alignment
+cost - so a fleet of them is a cheap workforce, not an autonomy story. Counting
+them let six of them plus a fired founder end the game on turn 0, at alignment
+100, on the ending meant to be the rare one (BALANCING.md 22)."""
+
+
+def _total_automation(state: GameState) -> bool:
+    """No human left, and enough autonomous agents to run the company alone.
+
+    Fleet size reuses ``AUTONOMY_AGENT_COUNT`` - what ``GameState.phase()``
+    already treats as "outnumbers the founder" - but only agents at
+    ``AUTONOMOUS_AGENT_LEVEL`` or above count towards it. The phase threshold
+    describes having scaled, which is legitimately cheap and early; the ending
+    needs the stronger claim that the fleet actually replaced people.
     """
     humans = [w for w in state.workers if w.is_human]
-    agents = [w for w in state.workers if not w.is_human]
-    return not humans and len(agents) >= AUTONOMY_AGENT_COUNT
+    autonomous = [
+        w for w in state.workers if not w.is_human and w.level >= AUTONOMOUS_AGENT_LEVEL
+    ]
+    return not humans and len(autonomous) >= AUTONOMY_AGENT_COUNT
 
 
 END_CONDITIONS: list[EndCondition] = [
