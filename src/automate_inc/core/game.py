@@ -334,7 +334,7 @@ class Game:
         blueprint = self.registry.get(blueprint_id)
         if blueprint is None:
             return ActionResult.failure(S.ERR_UNKNOWN_BLUEPRINT)
-        if not any(w.effective_level >= 2 for w in self.state.workers):
+        if not any(w.is_senior for w in self.state.workers):
             return ActionResult.failure(S.ERR_NO_SENIOR_WORKER)
         project = self.registry.instantiate(blueprint_id, self._next_id("p"))
         self.state.active_projects.append(project)
@@ -582,7 +582,7 @@ class Game:
         modifiers = self.modifiers
         pressure = self.pressure
 
-        self._advance_service_level()
+        self._advance_service_level(report)
         self._apply_worker_effects(modifiers)
         self._apply_side_effects(report, rng, modifiers)
         self._update_alignment(report, modifiers, pressure)
@@ -634,12 +634,20 @@ class Game:
                 )
                 project.adjust(attribute, delta)
 
-    def _advance_service_level(self) -> None:
-        """A project earns only what the client is actually getting."""
+    def _advance_service_level(self, report: TurnReport) -> None:
+        """A project earns only what the client is actually getting.
+
+        A project sliding back is the one case the player cannot read off the
+        team panel, so it says why - abandoned, or left to agents who own
+        nothing (``workers.SENIOR_LEVEL``).
+        """
         for project in self.state.active_projects:
-            project.adjust(
-                "service_level", economy.service_level_delta(project, self.state.workers)
-            )
+            delta = economy.service_level_delta(project, self.state.workers)
+            if delta < 0 and project.service_level > 0:
+                assigned = self.state.workers_on(project.id)
+                template = S.PROJECT_UNSUPERVISED if assigned else S.PROJECT_NEGLECTED
+                report.events.append(template.format(name=project.name))
+            project.adjust("service_level", delta)
 
     def _apply_side_effects(
         self, report: TurnReport, rng: random.Random, modifiers: Modifiers

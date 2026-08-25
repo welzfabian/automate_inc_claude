@@ -514,3 +514,48 @@ aus sechs Level-1-Agenten neben dem letzten Menschen ist genau die Lage, in der 
 „wofür wirst du noch gebraucht?" sitzt, auch wenn sie noch kein Spielende auslöst. Sollte
 sich das im Spiel als zu geschwätzig erweisen, ist es ein Zahlenwechsel in
 `data/events.json`, keine Code-Änderung.
+
+## 24. „Ohne erfahrenen Worker läuft kein Projekt" galt nur beim Starten
+
+**Der Fehler:** `Game.start_project` verlangt seit M1 mindestens einen Worker ab
+`SENIOR_LEVEL` (Menschen zählen über `effective_level` immer dazu), und die Fehlermeldung
+formuliert das als Dauerzustand: „Agenten der Stufe 1 arbeiten zuverlässig — aber niemand
+von ihnen übernimmt Verantwortung." Durchgesetzt wurde die Regel aber nur in diesem einen
+Moment. Danach war der Weg offen: Projekt mit einem Menschen starten, den Menschen feuern,
+zwei Level-1-Agenten daraufsetzen — Servicegrad klettert auf 100, Qualität auf 100, volles
+Einkommen dauerhaft. Kein Test deckte den Fall ab; alle 294 Tests blieben grün, als die
+Lücke gefunden wurde.
+
+Das ist dieselbe Verwechslung wie in Nr. 22, nur eine Ebene tiefer: Eine Bedingung wurde
+an einem Zeitpunkt geprüft, obwohl sie eine Eigenschaft beschreibt.
+
+**Auflösung:** `economy.service_level_delta` prüft jetzt nicht mehr „ist überhaupt jemand
+zugewiesen", sondern „ist jemand *Verantwortlicher* zugewiesen" (`Worker.is_senior`). Beide
+Fälle — verlassenes Projekt und ein Projekt in den Händen von Level-1-Agenten — laufen damit
+in denselben Verfall mit `service_level_neglect_rate`. Bewusst ein Gefälle und keine Klippe:
+Das ist die Linie, die M3 mit dem Servicegrad eingeführt hat (Nr. 11–12), und der Spieler
+sieht die Zahl fallen, statt vor eine blockierte Aktion zu laufen.
+
+**Gemessene Wirkung** (ecommerce_shop, acht Runden, Ereignisse aus):
+
+| Besetzung | Servicegrad | Einkommen |
+|---|---|---|
+| 2 Menschen | 100,0 | 208,0 |
+| 1 Mensch + 1 Level-1-Agent | 100,0 | 208,0 |
+| 1 Level-2-Agent + 1 Level-1-Agent | 100,0 | 208,0 |
+| 2 Level-2-Agenten | 100,0 | 197,6 |
+| **2 Level-1-Agenten** | **0,0** | **0,0** |
+
+Die Regel greift also ausschließlich bei der *reinen* Level-1-Besetzung — ein einziger
+Verantwortlicher im Team genügt. Level-1-Agenten bleiben damit das, was sie sein sollen:
+billige, zuverlässige Zuarbeit, die nur niemanden ersetzt.
+`test_full_staffing_beats_every_partial_staffing` bleibt über alle vier Projekttypen grün.
+
+**Warum das zu M7 gehört:** Es ist genau der Weg, den der in Nr. 22 beschriebene Exploit
+genommen hat — Projekt mit dem Startmenschen anlegen, Menschen feuern, Level-1-Flotte
+weiterlaufen lassen. Nr. 22 nimmt dieser Flotte das Spielende, Nr. 24 nimmt ihr die
+Einnahmen. Beide zusammen sagen dasselbe: Stufe 1 automatisiert niemanden weg.
+
+**Neu im Rundenbericht:** `PROJECT_NEGLECTED` bzw. `PROJECT_UNSUPERVISED` — ein fallender
+Servicegrad ist das Einzige, was der Spieler nicht am Team-Panel ablesen kann, und stand
+bisher (auch beim verlassenen Projekt) unkommentiert in der Bilanz.

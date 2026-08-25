@@ -73,6 +73,15 @@ enden lässt. Die Lehre steht als eigener Absatz in BALANCING.md 22: Eine bereit
 kalibrierte Konstante wiederzuverwenden ersetzt keine Simulation, sobald sie eine andere
 Frage beantworten soll.
 
+**Derselbe Fehler eine Ebene tiefer** ([BALANCING.md](../BALANCING.md) Nr. 24): Die Regel
+„ohne erfahrenen Worker läuft kein Projekt" wurde seit M1 nur in `start_project` geprüft,
+obwohl ihre eigene Fehlermeldung sie als Dauerzustand formuliert. Genau darüber lief der
+Exploit — Projekt mit dem Startmenschen anlegen, Menschen feuern, Level-1-Flotte kassiert
+weiter. `economy.service_level_delta` fragt jetzt nach einem *Verantwortlichen*
+(`Worker.is_senior`) statt nach irgendeiner Zuweisung, womit die reine Level-1-Besetzung in
+denselben Verfall läuft wie ein verlassenes Projekt. Nr. 22 nimmt dieser Flotte das
+Spielende, Nr. 24 nimmt ihr die Einnahmen.
+
 **Ein Vorbote, der nicht lügt.** Neues Ereignis `full_automation_warning` (Kategorie
 `AI`, `data/events.json`) feuert einen Schritt vor der Vollautomatisierung — 6 Agenten,
 höchstens noch ein Mensch — und lässt den Spieler wählen: 200 € zahlen und die letzte
@@ -91,6 +100,9 @@ das Ereignis warnt, blockiert aber mechanisch nichts. Dafür war ein neuer Eintr
   `MISALIGNMENT_THRESHOLD`), weil `END_CONDITIONS` es beim Modul-Import schon braucht.
 - Ein neuer Eintrag `max_humans` in `events.CONDITION_CHECKS`, ein neues Ereignis in
   `data/events.json`. Keine Schema-Änderung an `EventContext` oder `GameState`.
+- `workers.SENIOR_LEVEL` und `Worker.is_senior` lösen die bis dahin an zwei Stellen
+  verstreute wörtliche `2` ab; `_advance_service_level` nimmt jetzt den `TurnReport`
+  entgegen, um den Verfall zu benennen (`PROJECT_NEGLECTED`/`PROJECT_UNSUPERVISED`).
 
 ## Nicht Teil von M7
 
@@ -126,6 +138,12 @@ also **nach** dem Alignment-Verfall der Runde, zielen alle Fixtures eine Runde V
 - Ein einzelner verbliebener Mensch oder eine Flotte unterhalb der Autonomie-Schwelle
   verhindert beide neuen Enden.
 - Aktionen werden nach jedem der beiden neuen Enden verweigert.
+
+`tests/test_service_level.py` — Ergänzungen zu [BALANCING.md](../BALANCING.md) Nr. 24:
+- Ein fertiges Projekt, das an Level-1-Agenten übergeben wird, rutscht zurück.
+- Dieselbe Flotte auf Stufe 2 hält den Servicegrad bei 100 — die Regel fragt nach
+  Verantwortung, nicht nach Agenten als solchen.
+- Der Verfall bekommt seine eigene Zeile im Rundenbericht.
 
 `tests/test_events.py` — Ergänzungen: `max_humans` als eigenständige Bedingung, sowie ein
 Test, dass `full_automation_warning` exakt ab 6 Agenten und höchstens einem Menschen

@@ -132,6 +132,15 @@ class Cost:
         return Cost(self.money + other.money, self.tokens + other.tokens)
 
 
+SENIOR_LEVEL = 2
+"""The level from which a worker takes responsibility for a project.
+
+Level 1 agents work reliably but own nothing, so a project needs someone at this
+level or above - both to be started and, from M7, to keep its service level up.
+Enforcing it only at the start let a founder hand a running project to level-1
+agents and walk away (BALANCING.md 24)."""
+
+
 @dataclass
 class Worker:
     id: str
@@ -149,13 +158,18 @@ class Worker:
 
     @property
     def effective_level(self) -> int:
-        """Humans always satisfy the level-2 requirement for starting a project.
+        """Humans always satisfy the ``SENIOR_LEVEL`` requirement.
 
         GAME_DESIGN.md 3.2 allows "an agent OR an experienced human"; without this,
         no project could ever be started on turn 0 (level 2 agents need research,
         research needs income, income needs a project).
         """
-        return 2 if self.is_human else self.level
+        return SENIOR_LEVEL if self.is_human else self.level
+
+    @property
+    def is_senior(self) -> bool:
+        """Whether this worker can carry a project's responsibility."""
+        return self.effective_level >= SENIOR_LEVEL
 
     @property
     def efficiency(self) -> float:

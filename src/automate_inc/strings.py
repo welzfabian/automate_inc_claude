@@ -93,6 +93,11 @@ TOKENS_AUTO_BOUGHT = (
     "{amount:.0f} ♦ automatisch nachgekauft für {cost:.2f} € — der Betrieb lief weiter."
 )
 PROJECT_EXPIRED = "Projekt „{name}“ ist ausgelaufen. Der Kunde bedankt sich nicht."
+PROJECT_NEGLECTED = "Projekt „{name}“ ist unbesetzt. Der Servicegrad sinkt."
+PROJECT_UNSUPERVISED = (
+    "Projekt „{name}“ läuft ohne erfahrenen Worker. Die Agenten arbeiten weiter, "
+    "aber der Kunde erreicht niemanden — der Servicegrad sinkt."
+)
 TOKEN_PRICE_CHANGED = "Token-Preis: {old:.2f} € → {new:.2f} €"
 ALIGNMENT_CHANGED = "Alignment: {delta:+.0f} → {value:.0f}"
 INVESTOR_PAYOUT = "Investoren-Anteil ({share:.0f} %): -{amount:.2f} €"

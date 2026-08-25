@@ -58,14 +58,19 @@ def service_level_delta(project: Project, workers: Iterable[Worker]) -> float:
     """How much the service this project delivers moves this round.
 
     Staffed projects climb in proportion to how many of their posts are filled,
-    weighted by efficiency. Only a completely abandoned project slides back: partial
-    staffing is punished through the attribute caps instead. Taking the service level
-    away too would let a one-third staffed project stall below 100 forever - a trap
-    the player cannot read in advance.
+    weighted by efficiency. Only a project nobody is answerable for slides back:
+    partial staffing is punished through the attribute caps instead. Taking the
+    service level away too would let a one-third staffed project stall below 100
+    forever - a trap the player cannot read in advance.
+
+    "Nobody answerable" covers both the abandoned project and the one left to
+    level-1 agents. ``Game.start_project`` has always demanded a senior worker;
+    without the same test here, the founder could start a project, hand it to
+    agents who own nothing and collect full income forever (BALANCING.md 24).
     """
     tuning = load_tuning()
     assigned = [w for w in workers if w.assigned_to == project.id]
-    if not assigned:
+    if not any(w.is_senior for w in assigned):
         return -tuning.service_level_neglect_rate
     slots = sum(project.required_roles.values())
     return tuning.service_level_build_rate * sum(w.efficiency for w in assigned) / slots
