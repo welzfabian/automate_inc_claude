@@ -40,24 +40,46 @@ Ereignis-Ausweg, der jetzt Konsequenzen hat.
 
 ## Investoren-Auszahlung
 
-- `GameState.investor_equity` (0–40 %, Schritt 8 pro Runde) senkt `_calculate_income`
-  dauerhaft um genau diesen Anteil — mit einer eigenen benannten Zeile im Rundenbericht
-  („Investoren-Anteil: −X €"), wie es die Regel „nichts Unerklärtes in der Bilanz" verlangt.
+- `GameState.investor_equity` (0–40 %, Schritt 8 pro Runde) senkt den **Nettogewinn** der
+  Runde dauerhaft um genau diesen Anteil — mit einer eigenen benannten Zeile im
+  Rundenbericht („Investoren-Anteil: −X €"), wie es die Regel „nichts Unerklärtes in der
+  Bilanz" verlangt. Bewusst Nettogewinn statt Umsatz — siehe Nachtrag unten, das war
+  ursprünglich anders und ist der Grund für den Nachtrag.
 - Neue Aktion `Game.raise_funding()`: 1.200 € sofort gegen 8 Prozentpunkte, bis zum Deckel
   von 40 %. Freiwillig, jederzeit außer am Deckel.
 - `investor_threat`s `give_equity`-Option bekommt denselben Effekt zum schlechteren Kurs
   (1.500 € für dieselben 8 Punkte plus −10 Alignment) — unter Druck verhandelt man
   schlechter als freiwillig.
 
+## Nachtrag: Startanteil und `dividend_call` (noch am 25. August, gleicher Tag)
+
+Zwei Ergänzungen, direkt aus der Reaktion auf die erste Version: Das Startkapital ist
+Investorengeld, kein Erspartes — der Spieler startet nicht bei 0 %, sondern bei **15 %**
+Investorenanteil (`START_INVESTOR_EQUITY`). Und ein neues Ereignis `dividend_call`
+(Kategorie INVESTOR, alle 4 Runden ab Runde 6, nur wenn `investor_equity > 0`) macht den
+laufenden Abzug zu einer wiederkehrenden Entscheidung statt nur einer stillen Zeile:
+zahlen (400 €) oder vertrösten (+5 Punkte, −6 Alignment).
+
+Der Startanteil deckt genau den blinden Fleck der ersten Version auf: Bis hierhin waren
+Büro-Ausbau und `raise_funding` **optional**, ein Startwert > 0 % gilt dagegen für **jede**
+Partie. Das legte offen, dass `_pay_investors` den Anteil vom Bruttoeinkommen statt vom
+Nettogewinn abgezogen hatte — was zwei der vier `test_full_staffing_beats_every_partial_staffing`-Fälle
+brach, die CLAUDE.md als tragende Eigenschaft markiert. Details und die Kalibrierung des
+15-%-Startwerts stehen in [BALANCING.md](../BALANCING.md) Nr. 21.
+
 ## Was das kostet
 
-- **Save-Format 6**: `office_capacity`, `investor_equity`.
+- **Save-Format 6**: `office_capacity`, `investor_equity` (jetzt mit Startwert > 0).
 - Neuer Instant-Effekt `equity` in `core/events.py` (`INSTANT_FIELDS`), verarbeitet in
   `Game._apply_event_option` wie `alignment`.
-- `_calculate_income` bekommt eine eigene Zeile im `TurnReport` (`investor_payout`) statt
-  den Abzug still in `income` zu verstecken.
-- UI: Team-Panel zeigt die Bürokapazität, Dashboard-Kopf den Investorenanteil, Menü bekommt
-  zwei neue Einträge.
+- Neue Bedingung `min_investor_equity` in `CONDITION_CHECKS`, `EventContext` trägt jetzt
+  `investor_equity` — nötig, damit `dividend_call` überhaupt lesen kann, ob es was zu
+  fordern gibt.
+- `_pay_investors` bekommt eine eigene Zeile im `TurnReport` (`investor_payout`) statt den
+  Abzug still in `income` zu verstecken — und rechnet auf Nettogewinn, nicht auf Umsatz
+  (siehe Nachtrag).
+- UI: Team-Panel zeigt die Bürokapazität, Dashboard-Kopf den Investorenanteil ab Runde 0,
+  Menü bekommt zwei neue Einträge.
 
 ## Nicht Teil von M5
 
@@ -75,13 +97,12 @@ Eintrag in `events.INSTANT_FIELDS`, verarbeitet in `Game._apply_event_option` ge
 `alignment`. Das war schon in Abschnitt „Investoren-Auszahlung" oben so vorgesehen, hier
 nur konkretisiert.
 
-Kalibrierung siehe [BALANCING.md](../BALANCING.md) Nr. 20 — gegen bestehende Tabellen
-abgeglichen statt neu simuliert, weil beide Mechaniken optional sind und den kalibrierten
-Grundlauf aus Nr. 19 nicht berühren, solange niemand sie zieht.
+Kalibrierung siehe [BALANCING.md](../BALANCING.md) Nr. 20 (Büro, `raise_funding`) und
+Nr. 21 (Startanteil, Nettogewinn-Korrektur, `dividend_call`).
 
 ## Testlage
 
-`tests/test_office_and_investors.py`, plus eine Ergänzung in `tests/test_events.py`:
+`tests/test_office_and_investors.py`, plus Ergänzungen in `tests/test_events.py`:
 
 - Ein vierter Mensch wird abgelehnt, solange die Bürokapazität nicht erweitert ist; ein
   Agent ist davon nie betroffen.
@@ -89,8 +110,15 @@ Grundlauf aus Nr. 19 nicht berühren, solange niemand sie zieht.
   teurer (`OFFICE_EXPANSION_GROWTH`).
 - `raise_funding` bucht Geld und Anteil sofort, ist am Deckel gesperrt und überschreitet
   ihn nie, auch nicht bei einem Aufruf knapp darunter.
-- Der Investorenanteil zieht in `resolve_turn()` exakt `income * equity / 100` ab, erzeugt
-  eine benannte Zeile im Bericht und bleibt bei 0 % stumm.
+- Ein frischer Spielstand startet bereits bei `START_INVESTOR_EQUITY`, nicht bei 0.
+- Der Investorenanteil zieht in `resolve_turn()` exakt `(income - costs_money) * equity /
+  100` ab, erzeugt eine benannte Zeile im Bericht, bleibt bei 0 % stumm und zahlt nichts in
+  einer Verlustrunde.
 - `give_equity` in `investor_threat` erhöht `investor_equity` genauso wie `raise_funding`.
+- `dividend_call` ist nur mit `investor_equity > 0` verfügbar; „Vertrösten" erhöht Anteil
+  und senkt Alignment wie im Katalog angegeben.
 - Beide neuen Aktionen sind Teil der bestehenden Matrix-Tests: verweigert, sobald das
   Spiel vorbei ist; lässt den Zustand bei einer fehlgeschlagenen Ausführung unangetastet.
+- `tests/test_service_level.py::test_full_staffing_beats_every_partial_staffing` bleibt
+  über alle vier Projekttypen grün — das war der Regressionstest, der die
+  Umsatz-statt-Nettogewinn-Abweichung im Nachtrag überhaupt aufgedeckt hat.

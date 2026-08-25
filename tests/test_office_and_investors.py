@@ -15,7 +15,7 @@ from automate_inc.core.game import (
     OFFICE_EXPANSION_STEP,
     Game,
 )
-from automate_inc.core.state import START_OFFICE_CAPACITY
+from automate_inc.core.state import START_INVESTOR_EQUITY, START_OFFICE_CAPACITY
 from automate_inc.core.workers import Role, WorkerType
 
 # -- office capacity -----------------------------------------------------
@@ -76,13 +76,20 @@ def test_expand_office_deducts_its_cost():
 # -- investor funding ------------------------------------------------------
 
 
+def test_a_fresh_game_already_owes_investors_the_seed_equity():
+    """The starting money was a seed round, not savings - M5 addendum."""
+    game = Game(seed=1)
+    assert game.state.investor_equity == pytest.approx(START_INVESTOR_EQUITY)
+
+
 def test_raise_funding_grants_money_and_equity():
     game = Game(seed=1)
-    before = game.state.money
+    before_money = game.state.money
+    before_equity = game.state.investor_equity
     result = game.raise_funding()
     assert result.ok
-    assert game.state.money == pytest.approx(before + INVESTOR_FUNDING_AMOUNT)
-    assert game.state.investor_equity == pytest.approx(INVESTOR_EQUITY_STEP)
+    assert game.state.money == pytest.approx(before_money + INVESTOR_FUNDING_AMOUNT)
+    assert game.state.investor_equity == pytest.approx(before_equity + INVESTOR_EQUITY_STEP)
 
 
 def test_raise_funding_is_refused_at_the_cap():
@@ -100,18 +107,31 @@ def test_equity_never_exceeds_the_cap_even_near_the_boundary():
     assert game.state.investor_equity == INVESTOR_EQUITY_CAP
 
 
-def test_investor_payout_reduces_the_settled_money_by_the_equity_share():
+def test_investor_payout_is_a_share_of_net_profit_not_revenue():
+    """Deliberately net, not gross - see ``Game._pay_investors``: a flat cut of
+    revenue would tax full staffing harder than partial in absolute terms and
+    could overturn the thin margins ``test_service_level.py`` depends on."""
     game = Game(seed=5, event_registry=NO_EVENTS)
     game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN)
     game.start_project("static_website")
     game.assign_worker(game.state.workers[0].id, game.state.active_projects[0].id)
+    for _ in range(5):  # let service level ramp up so the round nets a profit
+        advance(game)
     game.raise_funding()
     report = advance(game)
-    assert report.investor_payout == pytest.approx(report.income * INVESTOR_EQUITY_STEP / 100)
-    expected_after = (
-        report.money_before + report.income - report.costs_money - report.investor_payout
-    )
+    net = report.income - report.costs_money
+    assert net > 0
+    equity = START_INVESTOR_EQUITY + INVESTOR_EQUITY_STEP
+    assert report.investor_payout == pytest.approx(net * equity / 100)
+    expected_after = report.money_before + net - report.investor_payout
     assert game.state.money == pytest.approx(expected_after)
+
+
+def test_no_payout_on_a_loss_making_round():
+    game = Game(seed=5, event_registry=NO_EVENTS)
+    game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN)  # cost, no project: pure loss
+    report = advance(game)
+    assert report.investor_payout == 0.0
 
 
 def test_investor_payout_is_a_named_report_line():
@@ -119,13 +139,15 @@ def test_investor_payout_is_a_named_report_line():
     game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN)
     game.start_project("static_website")
     game.assign_worker(game.state.workers[0].id, game.state.active_projects[0].id)
-    game.raise_funding()
+    for _ in range(5):
+        advance(game)
     report = advance(game)
     assert any("Investoren-Anteil" in event for event in report.events)
 
 
 def test_no_investor_payout_line_without_equity():
     game = Game(seed=5, event_registry=NO_EVENTS)
+    game.state.investor_equity = 0.0
     report = advance(game)
     assert report.investor_payout == 0.0
     assert not any("Investoren-Anteil" in event for event in report.events)

@@ -163,6 +163,7 @@ class EventContext:
     projects: int
     last_net: float | None
     triggered: frozenset[str]
+    investor_equity: float = 0.0
 
 
 def _cond_min_turn(ctx: EventContext, value: float) -> bool:
@@ -214,6 +215,10 @@ def _cond_max_last_net(ctx: EventContext, value: float) -> bool:
     return ctx.last_net is not None and ctx.last_net <= value
 
 
+def _cond_min_investor_equity(ctx: EventContext, value: float) -> bool:
+    return ctx.investor_equity >= value
+
+
 def _cond_after_event(ctx: EventContext, value: str) -> bool:
     return value in ctx.triggered
 
@@ -235,6 +240,7 @@ CONDITION_CHECKS = {
     "min_money": _cond_min_money,
     "max_money": _cond_max_money,
     "max_last_net": _cond_max_last_net,
+    "min_investor_equity": _cond_min_investor_equity,
     "after_event": _cond_after_event,
     "not_after_event": _cond_not_after_event,
 }

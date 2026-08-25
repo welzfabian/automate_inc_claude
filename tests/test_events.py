@@ -109,6 +109,16 @@ def test_max_money_needs_at_or_below_the_threshold():
     assert REGISTRY.is_available(event, poor)
 
 
+def test_min_investor_equity_needs_at_least_the_threshold():
+    event = Event(
+        id="x", category=EventCategory.INVESTOR, name="X", description="",
+        requires={"min_investor_equity": 5.0}, chance=1.0, once=False, options=(),
+    )
+    assert not REGISTRY.is_available(event, NOTHING_UNLOCKED)  # investor_equity defaults to 0.0
+    diluted = EventContext(**{**vars(NOTHING_UNLOCKED), "investor_equity": 5.0})
+    assert REGISTRY.is_available(event, diluted)
+
+
 def test_agents_outnumber_humans_compares_headcounts():
     event = Event(
         id="x", category=EventCategory.AI, name="X", description="",
@@ -325,9 +335,29 @@ def test_give_equity_permanently_raises_investor_equity():
     """M5: investor_threat's give_equity is no longer a free 3.000 € - it sells a
     permanent income share, the same effect raise_funding grants voluntarily."""
     game = Game(seed=1)
+    before = game.state.investor_equity
     force_pending(game, "investor_threat")
     assert game.answer_event("investor_threat", "give_equity").ok
-    assert game.state.investor_equity == pytest.approx(8.0)
+    assert game.state.investor_equity == pytest.approx(before + 8.0)
+
+
+def test_dividend_call_stalling_costs_more_equity_and_alignment():
+    game = Game(seed=1)
+    force_pending(game, "dividend_call")
+    before_equity = game.state.investor_equity
+    before_alignment = game.state.alignment
+    assert game.answer_event("dividend_call", "stall").ok
+    assert game.state.investor_equity == pytest.approx(before_equity + 5.0)
+    assert game.state.alignment == pytest.approx(before_alignment - 6.0)
+
+
+def test_dividend_call_is_only_available_with_existing_equity():
+    event = REGISTRY.get("dividend_call")
+    assert event is not None
+    diluted = EventContext(**{**vars(NOTHING_UNLOCKED), "turn": 8, "investor_equity": 5.0})
+    assert REGISTRY.is_available(event, diluted)
+    undiluted = EventContext(**{**vars(diluted), "investor_equity": 0.0})
+    assert not REGISTRY.is_available(event, undiluted)
 
 
 def test_a_running_option_becomes_active_pressure():

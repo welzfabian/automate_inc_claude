@@ -673,14 +673,22 @@ class Game:
         return total.money, total.tokens
 
     def _pay_investors(self, report: TurnReport) -> None:
-        """A fixed share of gross income, gone before it ever reaches the player.
+        """A dividend: a share of net profit, never of revenue that never arrived.
 
-        Read off ``income`` rather than net profit - the equity was sold against
-        revenue, not against whatever survives costs, and this keeps the line a
-        deterministic function of a value already on the report."""
+        Deliberately scaled off ``income - costs_money`` rather than gross income -
+        a flat cut of revenue would tax a fully-staffed project harder in absolute
+        terms than a partially-staffed one and could overturn a thin margin between
+        them, breaking the very property ``test_service_level.py`` exists to
+        guarantee (CLAUDE.md, "full staffing beats every partial staffing").
+        Scaling the *net* figure instead preserves any ordering between two runs by
+        construction. No payout on a loss-making round - investors take a cut of
+        profit, not a claim on your deficit."""
         if not self.state.investor_equity:
             return
-        report.investor_payout = report.income * self.state.investor_equity / 100
+        net = report.income - report.costs_money
+        if net <= 0:
+            return
+        report.investor_payout = net * self.state.investor_equity / 100
         report.events.append(
             S.INVESTOR_PAYOUT.format(
                 amount=report.investor_payout, share=self.state.investor_equity
@@ -714,6 +722,7 @@ class Game:
             projects=len(self.state.active_projects),
             last_net=self.state.last_net,
             triggered=frozenset(self.state.event_history),
+            investor_equity=self.state.investor_equity,
         )
 
     def _cooldown_ok(self, event: Event, tuning: EventTuning) -> bool:
