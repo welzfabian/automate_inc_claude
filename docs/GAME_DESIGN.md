@@ -101,6 +101,12 @@ Jedes Projekt:
 - **Projekte können NICHT nur mit Agenten der Stufe 1 umgesetzt werden** – diese sind nicht autonom genug.
 - **Mindestens 1 Worker der Stufe 2+ (Agent ODER Mensch mit Erfahrung) ist erforderlich**, um ein Projekt zu starten.
 - **Jedes Projekt macht für sich allein Gewinn** (kein Zählen nötig!).
+- **Jeden Auftrag gibt es einmal**, und größere Aufträge verlangen einen kleineren als
+  Referenz — der Katalog ist eine Leiter mit acht Größenstufen von 1 bis 8 Stellen.
+  Diese Regel steht nicht in der ursprünglichen Spec; siehe
+  [BALANCING.md](./BALANCING.md) Nr. 32. Der zweite Punkt oben gilt seitdem nur noch
+  eingeschränkt: Ab sechs Stellen macht ein rein **menschliches** Team Verlust — genau das
+  ist die Absicht ([BALANCING.md](./BALANCING.md) Nr. 34).
 
 | Projekt-Typ | Beispiel | Benötigte Rollen | Basis-Einnahmen | Basis-Fixkosten | Lebensdauer | Komplexität | Implementiert |
 |-------------|----------|------------------|-----------------|-----------------|-------------|-------------|---------------|
@@ -108,8 +114,17 @@ Jedes Projekt:
 | **Mittlere Dienstleistung** | E-Commerce-Shop | 1 Entwickler + 1 Designer | 170€/Runde | 0€ | 15 Runden | ⭐⭐ | ✅ |
 | **Mobile App** | Kunden-App | 1 Entwickler + 1 Designer + 1 Sales | 220€/Runde | 10€ | 15 Runden | ⭐⭐ | ✅ |
 | **Komplexe Dienstleistung** | Web-App mit Backend | 2 Entwickler + 1 Designer | 270€/Runde | 20€ | 12 Runden | ⭐⭐⭐ | ✅ |
-| **Enterprise-Software** | Unternehmenslösung | 3 Entwickler + 1 Forscher | 380€/Runde | 50€ | 10 Runden | ⭐⭐⭐ | ⬜ geplant |
-| **KI-Integration** | KI-Modul für Kunde | 2 Entwickler + 1 Forscher + 1 Sales | 480€/Runde | 80€ | 8 Runden | ⭐⭐⭐⭐ | ⬜ geplant |
+| **Enterprise-Software** | Konzern-Warenwirtschaft | 3 Entwickler + 1 Forscher | 380€/Runde | 50€ | 10 Runden | ⭐⭐⭐ | ✅ (ohne Forscher) |
+| **KI-Integration** | KI-Integration | 2 Entwickler + 1 Forscher + 1 Sales | 480€/Runde | 80€ | 8 Runden | ⭐⭐⭐⭐ | ✅ (ohne Forscher) |
+
+Seit M8 kommen darüber vier weitere Stufen dazu (5 bis 8 Stellen), die es in dieser
+Tabelle nie gab — SaaS-Plattform, Plattform-Neubau, Konzern-Suite und
+Konzern-KI-Plattform. Maßgeblich ist `src/automate_inc/data/projects.json`.
+
+> **Hinweis zu den Forscher-Stellen:** Die beiden großen Typen sind **ohne** ihre
+> Forscher-Stelle umgesetzt. Ein Forscher hält kein Projektattribut, seine Stelle wäre
+> gratis leer zu lassen und würde die Voll-Besetzungs-Regel brechen —
+> [BALANCING.md](./BALANCING.md) Nr. 36.
 
 > **Hinweis zu den Zahlen:** Die ursprünglichen Basis-Einnahmen dieser Tabelle lagen
 > unter den Worker-Kosten aus Kapitel 3.5 — jede Besetzung wäre defizitär gewesen.
@@ -233,7 +248,9 @@ Jeder zugewiesene Worker beeinflusst die Attribute des Projekts/Produkts:
 NotStarted → Active → Expired → (automatisch gelöscht)
 ```
 - **Active:** Generiert Einnahmen, verursacht Kosten, Worker können zugewiesen werden
-- **Expired:** Wird nach Ablauf der Lebensdauer automatisch gelöscht
+- **Expired:** Wird nach Ablauf der Lebensdauer automatisch gelöscht — und kommt **nicht
+  zurück**: Der Bauplan bleibt vergeben, der Katalog bietet ihn nicht erneut an
+  ([BALANCING.md](./BALANCING.md) Nr. 32)
 
 **Produkt-Lebenszyklus:**
 ```

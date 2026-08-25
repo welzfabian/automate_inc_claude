@@ -331,6 +331,11 @@ Alterung — ist mit 13 Ereignissen über alle vier Kategorien und jede Bedingun
 Effektart hinweg getestet (`tests/test_events.py`). Weitere Ereignisse sind danach ein
 Eintrag in `data/events.json`, kein Grund, den Meilenstein offen zu halten.
 
+> **Inzwischen sind es 15** — die Behauptung von oben hat sich damit selbst bestätigt.
+> `dividend_call` kam mit M5 dazu (Nr. 21), `full_automation_warning` mit M7 (Nr. 23), beide
+> als reiner JSON-Eintrag ohne Code-Änderung. Die Überschrift bleibt als Chronik stehen:
+> 13 war der Stand bei M4.
+
 ## 19. Was die Simulation zu M4 zeigt
 
 Dieselbe Idee wie bei M2/M3, aber gegen den Ereigniskatalog statt gegen die Technologie:
@@ -551,6 +556,10 @@ Verantwortlicher im Team genügt. Level-1-Agenten bleiben damit das, was sie sei
 billige, zuverlässige Zuarbeit, die nur niemanden ersetzt.
 `test_full_staffing_beats_every_partial_staffing` bleibt über alle vier Projekttypen grün.
 
+> **Nach M8:** Der Test läuft nicht mehr über vier handgepflegte IDs, sondern über die
+> gesamte Registry — seit der Leiter sind das elf Baupläne (Nr. 32). Was er durchsetzt,
+> steht als Rechnung in Nr. 33.
+
 **Warum das zu M7 gehört:** Es ist genau der Weg, den der in Nr. 22 beschriebene Exploit
 genommen hat — Projekt mit dem Startmenschen anlegen, Menschen feuern, Level-1-Flotte
 weiterlaufen lassen. Nr. 22 nimmt dieser Flotte das Spielende, Nr. 24 nimmt ihr die
@@ -615,6 +624,11 @@ Zeitpunkt geprüft, obwohl sie eine Eigenschaft beschreibt.* Nr. 22 hat ihn eine
 tiefer behoben (welche Agenten zählen) und dabei die Ebene darüber (wann gezählt wird)
 stehen lassen.
 
+> **Die Tabelle oben ist der Stand vor M8.** Die Leiter (Nr. 32) hat die Verteilung
+> gekippt, ohne dass jemand die Enden angefasst hat: Bei +0 Runden steht heute
+> Dystopie 11/11 statt geheimes Ende 11/11. Neu gemessen in **Nr. 37** — der
+> Zeitpunkt-statt-Dauer-Fehler unten gilt unverändert weiter.
+
 **Bewusst nicht hier behoben.** Jede Auflösung ändert, was die beiden Enden *bedeuten* —
 ob „Alignment gehalten" eine Frist braucht, ob das geheime Ende überhaupt beim Übergang
 feuern darf, ob die Vollautomatisierung eine Karenzrunde bekommt. Das ist ein Meilenstein,
@@ -672,6 +686,13 @@ gar nichts verdient.)
 - Die Einnahmen *fallen* sogar mit der Stufe (web_app 337 → 320 → 303), weil erst ab
   Stufe 2 Nebeneffekte existieren: Entwickler-Bugs (2 % / 5 %) und die Designer-Routine
   (−5 / −10 Sichtbarkeit ab fünf Runden auf demselben Projekt).
+
+> **Nach M8 über elf Baupläne nachgemessen: gilt weiter, und schärfer.** Stufe 3 ist auf
+> **11 von 11** Projekten schlechter als Stufe 2, und auf den großen Aufträgen kippt sie ins
+> Minus (Konzern-Suite −91, Konzern-KI-Plattform −180 gegen +78 und +23 bei Stufe 2). Am
+> oberen Ende der Leiter schlägt außerdem ein gemischtes Team aus einem Menschen und
+> Level-1-Agenten (+293 / +295, Nr. 34) jede reine Agentenflotte deutlich — Bugs und
+> Designer-Routine ab Stufe 2 kosten dort mehr, als die Effizienz einbringt.
 
 Das ist zur Hälfte die beabsichtigte Satire — Automatisierung ist eine Falle — aber es
 macht Stufe 3 **ausschließlich** zur Türöffnerin für `autonomous_agents` und
@@ -782,6 +803,11 @@ PYTHONPATH=src python3 tools/simulate.py --seeds 11 --turns 60 --projects 3
 | `automation` — Stufe 2, Menschen entlassen | geheimes Ende 11/11 (R7) | geheimes Ende 11/11 (R6) |
 | `full-tree` — alles hochrüsten | Bankrott 10/11 | Bankrott 8/11 |
 | `dangerous-tree` — Level-1-Flotte, ganzer Baum (80 Runden) | — | Kontrollverlust 8/11 (R72–74) |
+
+> **Die Tabelle oben ist der Stand vor M8.** Mit der Leiter (Nr. 32) gilt keine ihrer
+> Zeilen mehr — `humans` überlebt keine 120 Runden, `automation` endet in der Dystopie
+> statt im geheimen Ende, und kein Lauf endet mit fünfstelligem Überschuss. Neu gemessen
+> in **Nr. 38**.
 
 Vier Befunde, die keiner der obigen Nummern allein gehören:
 

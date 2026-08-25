@@ -27,6 +27,17 @@ python -m automate_inc
 ```bash
 pip install -e ".[dev]"
 pytest
+ruff check .
+```
+
+Die Balance wird simuliert, nicht geschätzt. `tools/simulate.py` spielt das Spiel mit
+skriptgesteuerten Strategien über viele Seeds durch — es ist bewusst **nicht** Teil der
+Test-Suite, weil es die Balance *misst* und nichts über sie behauptet:
+
+```bash
+PYTHONPATH=src python3 tools/simulate.py            # alle Strategien
+PYTHONPATH=src python3 tools/simulate.py --endings  # welches Ende feuert, und warum
+PYTHONPATH=src python3 tools/simulate.py --steady   # Einnahmen/Kosten je Bauplan
 ```
 
 ## Aufbau
@@ -42,6 +53,8 @@ src/automate_inc/
   data/      Balancing als JSON — neue Projekte brauchen keinen Code
   ui/        Rich-Oberfläche und Eingabeschleife
   strings.py Alle deutschen Spielertexte an einer Stelle
+tools/
+  simulate.py  Balance-Simulation über viele Seeds (nicht Teil der Tests)
 ```
 
 Die Trennung ist Absicht: `core` gibt für jede Aktion ein `ActionResult` und für
@@ -68,9 +81,30 @@ steigt, solange jemand daran arbeitet, und fällt, sobald niemand mehr da ist,
 Attribut-Deckel nach Besetzung, Projektgröße bestimmt Ertrag und Laufzeit, und die
 Spielphasen richten sich nach dem, was der Spieler getan hat, statt nach der Rundenzahl.
 
-**Geplant:** Zufallsereignisse, eine Geldsenke (nach M3 sammelt sich Geld an, ohne dass
-es je knapp wird), Produkte und Upgrades, externe Druckereignisse (Investoren,
-Privatleben, Markt), HR-Rolle — und der Twist. Die offenen Punkte im Einzelnen stehen in
+**Meilenstein 4 ([abgeschlossen](docs/milestones/M4_EVENTS.md)):** Druck von außen —
+fünfzehn Ereignisse aus Markt, Privatleben, KI-Debatte und Investorenrunde. Sie feuern
+nicht, sie stellen eine Frage: Jedes öffnet eine Entscheidung, und erst die Antwort kostet
+etwas — sofort oder als laufender Posten in jeder weiteren Runde.
+
+**Meilenstein 5 ([abgeschlossen](docs/milestones/M5_OFFICE_AND_INVESTORS.md)):** Ein
+Bürodeckel, der nur für Menschen gilt (Agenten brauchen keinen Schreibtisch), Ausbau gegen
+Geld — und Investoren, die von Anfang an einen Anteil am Gewinn halten, weil das Startkapital
+nie deins war.
+
+**Meilenstein 7 ([abgeschlossen](docs/milestones/M7_TWIST_ENDINGS.md)):** Der Twist. Zwei
+weitere Enden für den Fall, dass am Ende niemand mehr für dich arbeitet, der nicht auch für
+sich selbst optimiert — welches davon du bekommst, entscheidet allein das Alignment in
+diesem Moment.
+
+**Meilenstein 8 ([abgeschlossen](docs/milestones/M8_PROJECT_LADDER.md)):** Die Projektleiter.
+Elf Aufträge in acht Größenstufen, von einer Stelle bis acht — **jeden gibt es einmal**, und
+für den größeren will der Kunde den kleineren als Referenz sehen. Damit hat das Spiel zum
+ersten Mal eine Steigerung und eine echte Geldsenke: Ab sechs Stellen trägt ein rein
+menschliches Team seine Schreibtische nicht mehr.
+
+**Geplant:** Produkte und Upgrades — der Katalog geht irgendwann aus, und dann laufen die
+Gehälter weiter. Dazu die HR-Rolle und die offene Frage, ob die Vollautomatisierung eine
+Dauer statt eines Zeitpunkts prüfen sollte. Die offenen Punkte im Einzelnen stehen in
 [docs/milestones/](docs/milestones/).
 
 ## Dokumentation
