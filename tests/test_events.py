@@ -7,6 +7,7 @@ import json
 import pytest
 
 from automate_inc.core.events import (
+    ActiveEffect,
     Event,
     EventCategory,
     EventContext,
@@ -184,6 +185,23 @@ def test_multiplicative_fields_multiply_and_additive_fields_add():
     pressure = aggregate_pressure([a, b])
     assert pressure.income_multiplier == pytest.approx(0.72)
     assert pressure.fixed_cost == pytest.approx(15.0)
+
+
+# -- resolve_active: save/load resilience -------------------------------------
+
+
+def test_resolve_active_skips_an_effect_whose_event_a_newer_catalog_lost():
+    """A save may name an event the current catalog no longer has - the same
+    tolerance ``TechRegistry.resolve`` has for a dropped technology."""
+    active = [ActiveEffect(event_id="does_not_exist", option_id="whatever", remaining=1)]
+    assert REGISTRY.resolve_active(active) == []
+
+
+def test_resolve_active_skips_an_effect_whose_option_a_newer_catalog_lost():
+    """The event can still exist while the specific option it fired with was
+    renamed or removed - that must not crash the resolve either."""
+    active = [ActiveEffect(event_id="rent", option_id="does_not_exist", remaining=1)]
+    assert REGISTRY.resolve_active(active) == []
 
 
 # -- wired into Game: trigger -> pending decision -> answer -------------------
