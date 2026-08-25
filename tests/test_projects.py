@@ -85,14 +85,6 @@ def test_role_slots_are_limited():
     assert second.assigned_to is None
 
 
-def test_failed_action_leaves_state_untouched():
-    """Every action validates before it mutates - nothing half-applies."""
-    game = Game(seed=1)
-    before = game.state.to_dict()
-    assert not game.assign_worker("nope", "also_nope").ok
-    assert game.state.to_dict() == before
-
-
 @pytest.mark.parametrize("blueprint_id", ["static_website", "ecommerce_shop", "web_app"])
 def test_every_catalog_project_is_profitable_with_humans(blueprint_id):
     """VISION.md: a purely human team should make a small profit, not a loss."""

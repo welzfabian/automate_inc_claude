@@ -58,6 +58,14 @@ def test_unknown_effect_keys_are_rejected_at_load_time():
         )
 
 
+def test_a_prerequisite_naming_an_unknown_technology_is_rejected_at_load_time():
+    with pytest.raises(ValueError, match="requires unknown"):
+        TechRegistry.from_json(
+            '{"technologies": [{"id": "x", "name": "X", "description": "",'
+            ' "category": "ECONOMY", "cost": 1, "requires": ["does_not_exist"], "effects": {}}]}'
+        )
+
+
 def test_both_agent_levels_are_reachable_through_research():
     registry = load_tech_registry()
     unlocks = {

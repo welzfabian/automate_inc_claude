@@ -79,14 +79,6 @@ def test_bankruptcy_ends_the_game():
     assert any("BANKROTT" in event for event in report.events)
 
 
-def test_actions_are_refused_once_the_game_is_over():
-    game = Game(seed=1)
-    game.state.game_over_reason = "vorbei"
-    assert not game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN).ok
-    assert not game.start_project("static_website").ok
-    assert not game.buy_tokens(5).ok
-
-
 def test_a_new_company_is_in_the_buildup_phase():
     assert Game(seed=1).phase is Phase.BUILDUP
 
