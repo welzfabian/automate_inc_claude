@@ -13,9 +13,11 @@ anything about it. Run it directly::
     PYTHONPATH=src python3 tools/simulate.py --only automation --verbose
     PYTHONPATH=src python3 tools/simulate.py --endings        # which ending fires, and why
     PYTHONPATH=src python3 tools/simulate.py --steady         # income/costs per blueprint
+    PYTHONPATH=src python3 tools/simulate.py --dividend       # what the investors really take
+    PYTHONPATH=src python3 tools/simulate.py --guards         # which go/no-go guards ever bind
 
 The findings this produced are written up in ``docs/BALANCING.md`` under
-"Nach M7", one invocation named above each table.
+"Nach M7" and "Nach M8", one invocation named above each table.
 
 The policies deliberately play *simply*, not optimally: they follow one plan to
 the end and answer every event by the same rule M4 used ("the cheapest option you
@@ -126,8 +128,14 @@ class Strategy:
 
     A player can read that off the catalogue before signing (posts, income and
     fixed costs are all on the menu line), so a policy that signs anyway is
-    measuring its own recklessness rather than the balance. Turned off, it
-    measures exactly that - see the ``humans-greedy`` strategy."""
+    measuring its own recklessness rather than the balance.
+
+    **It currently measures nothing.** Over every strategy below the guard
+    changes not one decision: the rungs where a full team runs at a loss sit at
+    seven and eight posts, and no policy that gets that far up the ladder is
+    staffed in a way that loses money there (BALANCING.md 40). Kept because it
+    is the right guard for a future catalogue, not because it is doing work -
+    ``--guards`` prints how often it, and every other go/no-go check, binds."""
 
     def senior_plan(self) -> StaffPlan:
         return self.seniors if self.seniors is not None else self.staff
@@ -586,6 +594,14 @@ def steady_state(token_price: float = 10.0) -> None:
 def _settle_in(
     blueprint_id: str, kind: WorkerType, level: int, token_price: float
 ) -> tuple[float, float]:
+    """Income and total costs per round, once the attributes have settled."""
+    report = _settle_report(blueprint_id, kind, level, token_price)
+    return report.income, report.costs_money + report.costs_tokens * token_price
+
+
+def _settle_report(
+    blueprint_id: str, kind: WorkerType, level: int, token_price: float
+) -> TurnReport:
     game = Game(seed=1, event_registry=EventRegistry({}))
     game.state.research = 500
     game.research("ai_intelligence_2")
@@ -616,7 +632,7 @@ def _settle_in(
     for _ in range(STEADY_ROUNDS):
         game.state.token_price = token_price
         report = game.resolve_turn()
-    return report.income, report.costs_money + report.costs_tokens * token_price
+    return report
 
 
 # -- the endings -------------------------------------------------------------
@@ -663,6 +679,158 @@ def endings_sweep(seeds: int, turns: int) -> None:
             )
 
 
+# -- the investor dividend ---------------------------------------------------
+
+DIVIDEND_BLUEPRINTS = (
+    "ecommerce_shop",
+    "web_app",
+    "ki_integration",
+    "saas_platform",
+    "corporate_suite",
+    "group_ai_platform",
+)
+
+DIVIDEND_SHARES = (15.0, 40.0)
+"""The starting equity (M5) and the cap - the two ends of what a run can owe."""
+
+
+def dividend_sweep(token_price: float = 10.0) -> None:
+    """What the investors take, measured against the round's *real* profit.
+
+    ``Game._pay_investors`` scales the payout off ``income - costs_money``, and
+    an agent pays in tokens rather than money. This prints both figures side by
+    side so the gap between them is a number rather than an argument
+    (BALANCING.md 39).
+    """
+    print(f"{'Auftrag':<20}{'Besetzung':<12}{'ech.Gewinn':>11}", end="")
+    for share in DIVIDEND_SHARES:
+        print(f"{f'Div@{share:.0f}%':>10}{'Anteil':>8}", end="")
+    print()
+    for blueprint_id in DIVIDEND_BLUEPRINTS:
+        for label, kind, level in STEADY_STAFF:
+            report = _settle_report(blueprint_id, kind, level, token_price)
+            real = report.income - report.costs_money - report.costs_tokens * token_price
+            if real <= 0:
+                continue  # a loss-making staffing pays no dividend anyway
+            # What ``_pay_investors`` actually scales the payout off: the token
+            # bill is settled separately (``Game._settle``) and never reaches it.
+            book = report.income - report.costs_money
+            print(f"{blueprint_id:<20}{label:<12}{real:>11.1f}", end="")
+            for share in DIVIDEND_SHARES:
+                payout = book * share / 100.0
+                print(f"{payout:>10.1f}{payout / real:>7.0%}", end="")
+            print()
+    _dividend_runs()
+
+
+DIVIDEND_RUN_SHARES = (0.0, 15.0, 40.0)
+DIVIDEND_RUN_STRATEGIES = ("humans", "level1-fleet", "dangerous-tree")
+
+
+def _dividend_runs(seeds: int = 11, turns: int = 60) -> None:
+    """The same gap over whole runs: only the starting equity is varied.
+
+    ``raise_funding`` is switched off for all three so that the equity really is
+    the only difference - otherwise a policy would sell more of itself mid-run
+    and the comparison would measure that instead.
+    """
+    print(f"\n{seeds} Seeds, {turns} Runden - nur der Investoren-Anteil variiert\n")
+    print(f"{'Strategie':<16}{'Anteil':>8}  Ausgang")
+    for name in DIVIDEND_RUN_STRATEGIES:
+        strategy = replace(
+            next(s for s in STRATEGIES if s.name == name), raise_funding=False
+        )
+        for share in DIVIDEND_RUN_SHARES:
+            results = [
+                _run_with_equity(strategy, seed, turns, share) for seed in range(1, seeds + 1)
+            ]
+            counts: dict[str, int] = {}
+            for result in results:
+                counts[result.outcome] = counts.get(result.outcome, 0) + 1
+            tally = ", ".join(f"{k} {v}" for k, v in sorted(counts.items(), key=lambda kv: -kv[1]))
+            end = statistics.median(r.end_money for r in results)
+            print(f"{name:<16}{share:>7.0f}%  {tally:<38} Endgeld {end:>9.0f} €")
+
+
+def _run_with_equity(
+    strategy: Strategy, seed: int, turns: int, equity: float
+) -> RunResult:
+    """``run`` with the starting equity overridden before the first turn."""
+    game = Game(seed=seed)
+    game.state.investor_equity = equity
+    memo: dict[str, int] = {}
+    for _ in range(turns):
+        play_turn(game, strategy, memo)
+        if game.resolve_turn().blocked or game.state.is_over:
+            break
+    return RunResult(
+        seed=seed,
+        outcome=_outcome_of(game),
+        turns=game.state.turn,
+        end_money=game.state.money,
+        end_alignment=game.state.alignment,
+    )
+
+
+# -- how often the go/no-go guards actually bind ------------------------------
+
+
+def guard_sweep(seeds: int, turns: int) -> None:
+    """How often each blueprint guard in ``_pick_blueprint`` changes a decision.
+
+    A guard that never binds is not a safety net, it is decoration - and a
+    strategy whose only difference is a guard that never binds measures nothing
+    at all. That is the mistake BALANCING.md 22, 25 and 29 each record once;
+    this is the check that would have caught it (BALANCING.md 40).
+    """
+    global _expected_net
+    original = _expected_net
+    tally: dict[str, dict[str, int]] = {}
+
+    def counted(game: Game, strategy: Strategy, blueprint: ProjectBlueprint) -> float:
+        value = original(game, strategy, blueprint)
+        row = tally.setdefault(strategy.name, {"seen": 0, "refused": 0})
+        row["seen"] += 1
+        if value <= 0:
+            row["refused"] += 1
+        return value
+
+    _expected_net = counted
+    try:
+        for strategy in STRATEGIES:
+            for seed in range(1, seeds + 1):
+                run(strategy, seed, turns)
+    finally:
+        _expected_net = original
+
+    print(f"{'Strategie':<22}{'bewertet':>10}{'abgelehnt':>11}")
+    for strategy in STRATEGIES:
+        if not strategy.prudent:
+            print(f"{strategy.name:<22}{'Sperre aus':>10}{'-':>11}")
+            continue
+        row = tally.get(strategy.name, {"seen": 0, "refused": 0})
+        print(f"{strategy.name:<22}{row['seen']:>10}{row['refused']:>11}")
+
+    # The counts alone would still leave "but does it matter?" open. A refusal
+    # only matters if taking the job would have played out differently, and the
+    # other two guards (reserve, office) reject the same jobs first - so the A/B
+    # is the finding, not the tally.
+    print("\nDieselbe Politik mit und ohne Sperre:")
+    for strategy in STRATEGIES:
+        if not strategy.prudent:
+            continue
+        both = [
+            [run(replace(strategy, prudent=flag), seed, turns) for seed in range(1, seeds + 1)]
+            for flag in (True, False)
+        ]
+        verdict = "identisch" if _outcomes(both[0]) == _outcomes(both[1]) else "UNTERSCHIED"
+        print(f"  {strategy.name:<22}{verdict}")
+
+
+def _outcomes(results: list[RunResult]) -> list[tuple[str, int, float]]:
+    return [(r.outcome, r.turns, round(r.end_money, 2)) for r in results]
+
+
 # -- reporting ---------------------------------------------------------------
 
 
@@ -704,10 +872,26 @@ def main() -> None:
         action="store_true",
         help="per-blueprint income and costs once the attributes have settled",
     )
+    parser.add_argument(
+        "--dividend",
+        action="store_true",
+        help="what the investors take, against the round's real profit",
+    )
+    parser.add_argument(
+        "--guards",
+        action="store_true",
+        help="how often each go/no-go guard actually changes a decision",
+    )
     args = parser.parse_args()
 
     if args.steady:
         steady_state()
+        return
+    if args.dividend:
+        dividend_sweep()
+        return
+    if args.guards:
+        guard_sweep(args.seeds, args.turns)
         return
     if args.endings:
         endings_sweep(args.seeds, args.turns)

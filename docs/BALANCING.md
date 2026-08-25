@@ -1032,3 +1032,150 @@ Vier Befunde:
    damit beantwortet: Es gibt keinen Lauf mehr, der mit 10.000–23.000 € endet, weil jede
    weitere Sprosse Personal, Schreibtische und Fixkosten verlangt. Was die Ereignisse (M4),
    das Büro (M5) und die Investoren (M5) nicht geschafft haben, schafft die Leiter.
+
+---
+
+# Nach M8: Balancing-Analyse
+
+> Kein eigener Meilenstein — eine Nachmessung des Stands nach M8 mit den Werkzeugen, die
+> M8 hinterlassen hat. Alle Tabellen von M8 reproduzieren unverändert; die drei Nummern
+> unten sind das, was dabei zusätzlich aufgefallen ist. Nr. 39 und Nr. 40 sind **Befunde,
+> nicht Korrekturen**: beide ändern, was eine Mechanik bedeutet, und gehören damit in
+> einen Meilenstein, nicht in eine Zahlenkorrektur.
+
+## 39. Die Investoren-Dividende ignoriert die Tokenrechnung
+
+```
+PYTHONPATH=src python3 tools/simulate.py --dividend
+```
+
+**Der Befund:** `Game._pay_investors` skaliert die Auszahlung auf
+`report.income - report.costs_money`. Agenten kosten aber **Tokens**, nicht Geld — die
+Tokenrechnung wird erst danach in `_settle` beglichen und taucht in dieser Zahl nie auf.
+Für ein Agententeam ist die Bemessungsgrundlage damit nicht der Gewinn, sondern nahezu der
+**Umsatz**.
+
+Eingeschwungener Zustand, Tokenpreis 10 €, „Anteil" = die Dividende als Anteil am
+*echten* Rundengewinn (`Einnahmen − Geldkosten − Tokenkosten`):
+
+| Auftrag | Besetzung | ech. Gewinn | Div. @ 15 % | Anteil | Div. @ 40 % | Anteil |
+|---|---|---:|---:|---:|---:|---:|
+| Web-App | Menschen | 87,0 | 13,1 | **15 %** | 34,8 | **40 %** |
+| Web-App | Agent Lv2 | 172,1 | 45,0 | 26 % | 120,1 | 70 % |
+| SaaS-Plattform | Agent Lv3 | 193,0 | 68,5 | 36 % | 182,8 | 95 % |
+| Konzern-Suite | Agent Lv2 | 78,2 | 54,9 | 70 % | 146,5 | **187 %** |
+| Konzern-KI-Plattform | Agent Lv2 | 23,0 | 53,9 | **234 %** | 143,6 | **624 %** |
+
+Beim reinen Menschen-Team stimmt der Anteil exakt mit der Beteiligung überein — dort sind
+Geldkosten alle Kosten. Je weiter ein Team automatisiert ist, desto weiter läuft er
+davon weg, bis die Dividende auf der obersten Sprosse den Rundengewinn **übersteigt**:
++23 € verdient, 53,90 € ausgeschüttet, −30,90 € auf dem Konto.
+
+**Warum das mehr ist als eine schiefe Zahl.** Der Docstring von `_pay_investors` sagt zu,
+was hier nicht gilt: *„No payout on a loss-making round — investors take a cut of profit,
+not a claim on your deficit."* Die Prüfung `if net <= 0: return` sieht denselben
+tokenfreien Nettowert und greift deshalb genau dann nicht, wenn sie gebraucht würde. Und
+es verletzt die Regel aus [CLAUDE.md](../CLAUDE.md), **nichts dürfe unerklärt auf der
+Bilanz landen**: Die Projektübersicht rechnet den Tokenpreis in ihr Netto ein
+(`ui/dashboard.py`), die Investorenzeile des Rundenberichts nicht. Der Spieler sieht ein
+Projekt mit +23 € und darunter „Investoren-Anteil (15 %): −53,90 €". Die beiden Zahlen
+lassen sich mit nichts auf dem Bildschirm zusammenbringen.
+
+**Über ganze Läufe** (11 Seeds, 60 Runden, `raise_funding` aus, nur der Startanteil
+variiert) trägt derselbe Fehler den gesamten Unterschied zwischen „spürbar wenig" und
+„tödlich":
+
+| Strategie | 0 % | 15 % | 40 % |
+|---|---|---|---|
+| `humans` | überlebt 10/11, 1.401 € | überlebt 10/11, 1.284 € | überlebt 10/11, **935 €** |
+| `level1-fleet` | überlebt 11/11, 9.226 € | überlebt 11/11, 4.281 € | **Bankrott 6/11**, −65 € |
+| `dangerous-tree` | überlebt 10/11, 12.033 € | überlebt 8/11, 5.591 € | **Bankrott 7/11**, −29 € |
+
+Nr. 21 hat den Startanteil gegen ein **Menschen**-Team kalibriert und dort 159 € über 60
+Runden gemessen — „spürbar wenig". Das war richtig gemessen und für den falschen Pfad: In
+der Messung oben kosten dieselben 15 % das Menschen-Team 117 € (1.401 → 1.284 €) und die
+Level-1-Flotte **4.945 €** (9.226 → 4.281 €), also das Zweiundvierzigfache. Vierter Fall des Musters aus Nr. 22, 24 und 35: *eine Regel für einen
+Fall formuliert und für einen Sonderfall implementiert.* Sämtliche Investoren-Tests in
+`tests/test_office_and_investors.py` besetzen eine Statische Website mit **Menschen** —
+dem einzigen Team ohne Tokenrechnung.
+
+**Ausdrücklich nicht hier behoben.** Die naheliegende Auflösung ist eine Zeile
+(`net = income - costs_money - costs_tokens * token_price`), aber sie ist keine
+Zahlenkorrektur: Sie verbilligt jeden automatisierten Pfad spürbar, und die Begründung des
+Docstrings — die Dividende dürfe die Rangfolge zwischen zwei Besetzungen nicht kippen
+(`test_full_staffing_beats_every_partial_staffing`) — muss für die neue Bemessungsgrundlage
+neu geprüft werden. Als offener Punkt geführt.
+
+## 40. Eine Sperre, die nie greift — und eine Strategie, die nichts misst
+
+```
+PYTHONPATH=src python3 tools/simulate.py --guards
+```
+
+`Strategy.prudent` lässt eine Politik einen Auftrag ablehnen, dessen vollbesetztes Team
+mehr kostet als es einbringt; `humans-greedy` unterscheidet sich von `humans` in nichts
+anderem als diesem Schalter und soll laut Docstring „genau das messen". Nachgezählt über
+alle Strategien, 11 Seeds, 60 Runden:
+
+| Strategie | Baupläne bewertet | davon abgelehnt |
+|---|---:|---:|
+| `humans` | 1.408 | **0** |
+| `humans+funding` | 632 | 4 |
+| `level1-fleet` | 110 | 0 |
+| `automation`, `automation+alignment` | je 44 | 0 |
+| `full-tree` | 46 | 0 |
+| `dangerous-tree` | 98 | 0 |
+
+Und die Ablehnungen, die es gibt, ändern nichts: Dieselbe Politik mit und ohne Sperre
+liefert für **alle sieben** Strategien Ausgang, Rundenzahl und Endgeld identisch.
+`humans-greedy` ist damit Zeile für Zeile derselbe Lauf wie `humans`.
+
+**Warum:** Die Sperre kann nur dort binden, wo ein volles Team defizitär ist — das sind
+nach Nr. 34 die Sprossen mit sieben und acht Stellen, und dort nur für Menschen und für
+Stufe-3-Agenten. Kein Plan, der so besetzt ist, kommt jemals so weit: Der Bürodeckel hält
+den Menschen-Pfad bei Stufe 4–5 (Nr. 38), und eine hochgerüstete Flotte ist vorher
+bankrott (Nr. 28). Wo `humans+funding` die Konzern-Suite doch bewertet, weisen Reserve und
+Bürodeckel sie ohnehin zuerst ab. Die Sperre ist also nicht zufällig wirkungslos, sondern
+**durch die Bauart des Katalogs unerreichbar**.
+
+Das ist zum vierten Mal das Muster aus Nr. 22, 25 und 29 — *eine Messung misst die Größe,
+die sie misst* — diesmal in der Messapparatur selbst statt in einer Schlussfolgerung. Es
+ist noch keine falsche Zahl geworden: `humans-greedy` wird in diesem Dokument nirgends
+zitiert. Behoben ist der Docstring, der etwas anderes behauptet hat; `--guards` hält die
+Prüfung nach, damit die nächste Sprosse nicht wieder unbemerkt daran vorbeiläuft. Die
+Sperre selbst bleibt — sie ist die richtige Absicherung für einen Katalog, der Nr. 34
+irgendwann anders löst.
+
+## 41. Die Balancing-Regeln prüfen sich jetzt selbst
+
+`tools/simulate.py` misst und behauptet nichts — das ist Absicht und bleibt so. Was
+gefehlt hat, ist die andere Hälfte: Die Regeln, die für **jeden** Eintrag in `data/*.json`
+gelten müssen, standen ausschließlich als Prosa in diesem Dokument.
+`tests/test_balancing.py` macht sie ausführbar, getrennt in zwei Sorten:
+
+**Garantien** — müssen grün bleiben:
+
+- die drei Untergrenzen aus Nr. 33, als Arithmetik über die Registry statt als
+  ausgespielte Simulation. `test_full_staffing_beats_every_partial_staffing` prüft
+  weiterhin die *Folge*; hier scheitert ein neues `base_income` an der Zeile, die die
+  Zahl nennt, die es zu schlagen hat. Die Ein-Stellen-Ausnahme steht als eigener Test
+  daneben, statt als Kommentar.
+- kein toter Sprosse: jeder Bauplan ist für **mindestens eine** Besetzung profitabel.
+- die Leiter ist zyklenfrei und jeder Bauplan von Runde 0 aus erreichbar.
+- die Menschen-Wand aus Nr. 34, von beiden Seiten: bis sechs Stellen trägt ein
+  Menschen-Team eine Marge, ab sieben zahlt es drauf — und die Aufträge jenseits der Wand
+  tragen echte Fixkosten, weil die Untergrenzen den anderen Hebel verbieten.
+- `attribute_cap_base <= attribute_start`, sonst wäre der Deckel eine Stellschraube, die
+  nichts tut.
+
+**Befunde** — festgenagelt auf ihren heutigen Stand, damit sie rot werden, wenn der
+zugehörige offene Punkt gelöst wird. Jeder nennt die Nummer, die darüber entscheidet:
+Stufe 3 ist auf allen elf Bauplänen schlechter als Stufe 2 (Nr. 27), und die Dividende
+übersteigt auf der obersten Sprosse den Rundengewinn (Nr. 39).
+
+Der Preis dafür ist gering: 53 zusätzliche Tests (51 grün, zwei übersprungen — die beiden
+Ein-Stellen-Aufträge, für die die Untergrenzen nichts zu vergleichen haben), 0,2 Sekunden. Der Nutzen ist die
+Mutationsprobe — `group_ai_platform.base_income` von 700 auf 640 gesetzt bricht genau den
+Untergrenzen-Test für diesen Bauplan, `corporate_suite.basis_fixed_costs` von 205 auf 100
+genau den Wand-Test. Beides fiel vorher nur der langsamen Vollsimulation auf, und auch
+dort nur als „irgendetwas ist schlechter geworden".
