@@ -2,10 +2,10 @@
 
 import pytest
 
-from _helpers import NO_EVENTS, advance
+from _helpers import NO_EVENTS, advance, commission
 from automate_inc.core import economy
 from automate_inc.core.game import Game
-from automate_inc.core.projects import load_tuning
+from automate_inc.core.projects import load_registry, load_tuning
 from automate_inc.core.workers import Role, WorkerType
 
 TUNING = load_tuning()
@@ -20,9 +20,14 @@ def project_game(blueprint_id="ecommerce_shop", staffing=None, seed=4) -> Game:
     unexplained noise in a same-seed comparison between two staffings.
     """
     game = Game(seed=seed, event_registry=NO_EVENTS)
+    # The office cap is a separate mechanic with its own tests (M5). This file
+    # measures the plain economy, and from six posts up the ladder's jobs no
+    # longer fit in the starting office - which is the point of M8, but it would
+    # show up here as an unstaffable project rather than as an economic result.
+    game.state.office_capacity = 99
     game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN)
     starter = game.state.workers[0]
-    assert game.start_project(blueprint_id).ok
+    assert commission(game, blueprint_id).ok
     assert game.fire_worker(starter.id).ok
     project = game.state.active_projects[0]
     for role, count in (staffing or {}).items():
@@ -148,7 +153,7 @@ def test_agents_build_faster_than_people():
     agents.research("ai_intelligence_3")
     agents.hire_worker(Role.DEVELOPER, WorkerType.HUMAN)
     starter = agents.state.workers[0]
-    agents.start_project("ecommerce_shop")
+    commission(agents, "ecommerce_shop")
     agents.fire_worker(starter.id)
     for role in (Role.DEVELOPER, Role.DESIGNER):
         agents.hire_worker(role, WorkerType.AGENT, 3)
@@ -225,6 +230,16 @@ def test_the_slide_is_gradual_not_instant():
     assert project.quality == pytest.approx(100.0 - TUNING.attribute_entropy)
 
 
+def test_an_attribute_no_role_on_the_project_holds_is_neutral():
+    """BALANCING.md 2 promised this for every attribute and delivered it for
+    aesthetics only - until the ladder added a job with no developer on it."""
+    game = project_game("landing_page", staffing={Role.DESIGNER: 1})
+    play(game, 6)
+    project = game.state.active_projects[0]
+    assert project.quality == TUNING.attribute_start        # nobody lifts it
+    assert economy.project_income(project, game.state.workers) == project.base_income
+
+
 def test_sales_caps_nothing():
     """It has no attribute to hold; leaving the post empty costs the visibility bonus."""
     assert Role.SALES not in economy.ROLE_ATTRIBUTES
@@ -233,11 +248,14 @@ def test_sales_caps_nothing():
 # -- the economics -----------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "blueprint_id", ["static_website", "ecommerce_shop", "mobile_app", "web_app"]
-)
+@pytest.mark.parametrize("blueprint_id", [bp.id for bp in load_registry().all()])
 def test_full_staffing_beats_every_partial_staffing(blueprint_id):
-    """The property that makes the whole mechanic work."""
+    """The property that makes the whole mechanic work.
+
+    Parametrised over the *registry* rather than a hand-kept list since M8: the
+    ladder added seven jobs, and the two floors this property imposes on
+    ``base_income`` (BALANCING.md 33) are easy to miss when adding an eighth.
+    """
     reference = project_game(blueprint_id)
     required = full(reference)
     complete = project_game(blueprint_id, staffing=required)

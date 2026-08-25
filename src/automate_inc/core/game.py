@@ -26,7 +26,12 @@ from automate_inc.core.events import (
     load_event_registry,
     load_event_tuning,
 )
-from automate_inc.core.projects import Project, ProjectRegistry, load_registry
+from automate_inc.core.projects import (
+    Project,
+    ProjectBlueprint,
+    ProjectRegistry,
+    load_registry,
+)
 from automate_inc.core.state import AUTONOMY_AGENT_COUNT, START_OFFICE_CAPACITY, GameState, Phase
 from automate_inc.core.tech import (
     Modifiers,
@@ -230,6 +235,23 @@ class Game:
         """
         return aggregate_pressure(self.event_registry.resolve_active(self.state.active_events))
 
+    def available_blueprints(self) -> list[ProjectBlueprint]:
+        """The jobs still on offer, smallest first.
+
+        Every blueprint exists once (M8), so the catalogue shrinks as the company
+        works through it. Lives here rather than in the UI for the same reason
+        ``free_slots`` does: what the menu offers and what ``start_project``
+        accepts must not be able to drift apart.
+        """
+        return sorted(
+            (
+                blueprint
+                for blueprint in self.registry.all()
+                if self.registry.is_available(blueprint, self.state.started_projects)
+            ),
+            key=lambda bp: sum(bp.required_roles.values()),
+        )
+
     def available_technologies(self) -> list[Technology]:
         return [
             tech
@@ -334,10 +356,21 @@ class Game:
         blueprint = self.registry.get(blueprint_id)
         if blueprint is None:
             return ActionResult.failure(S.ERR_UNKNOWN_BLUEPRINT)
+        if blueprint_id in self.state.started_projects:
+            return ActionResult.failure(S.ERR_PROJECT_TAKEN.format(name=blueprint.name))
+        missing = self.registry.missing_requirements(blueprint, self.state.started_projects)
+        if missing:
+            names = ", ".join(
+                m.name for m in (self.registry.get(i) for i in missing) if m is not None
+            )
+            return ActionResult.failure(
+                S.ERR_PROJECT_LOCKED.format(name=blueprint.name, missing=names)
+            )
         if not any(w.is_senior for w in self.state.workers):
             return ActionResult.failure(S.ERR_NO_SENIOR_WORKER)
         project = self.registry.instantiate(blueprint_id, self._next_id("p"))
         self.state.active_projects.append(project)
+        self.state.started_projects.append(blueprint_id)
         return ActionResult.success(
             S.PROJECT_STARTED.format(name=project.name, lifetime=project.lifetime)
         )

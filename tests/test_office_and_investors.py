@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from _helpers import NO_EVENTS, advance
+from _helpers import NO_EVENTS, advance, commission
 from automate_inc import strings as S
 from automate_inc.core.game import (
     INVESTOR_EQUITY_CAP,
@@ -113,7 +113,7 @@ def test_investor_payout_is_a_share_of_net_profit_not_revenue():
     could overturn the thin margins ``test_service_level.py`` depends on."""
     game = Game(seed=5, event_registry=NO_EVENTS)
     game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN)
-    game.start_project("static_website")
+    commission(game, "static_website")
     game.assign_worker(game.state.workers[0].id, game.state.active_projects[0].id)
     for _ in range(5):  # let service level ramp up so the round nets a profit
         advance(game)
@@ -137,7 +137,7 @@ def test_no_payout_on_a_loss_making_round():
 def test_investor_payout_is_a_named_report_line():
     game = Game(seed=5, event_registry=NO_EVENTS)
     game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN)
-    game.start_project("static_website")
+    commission(game, "static_website")
     game.assign_worker(game.state.workers[0].id, game.state.active_projects[0].id)
     for _ in range(5):
         advance(game)

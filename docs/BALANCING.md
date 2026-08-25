@@ -331,6 +331,11 @@ Alterung — ist mit 13 Ereignissen über alle vier Kategorien und jede Bedingun
 Effektart hinweg getestet (`tests/test_events.py`). Weitere Ereignisse sind danach ein
 Eintrag in `data/events.json`, kein Grund, den Meilenstein offen zu halten.
 
+> **Inzwischen sind es 15** — die Behauptung von oben hat sich damit selbst bestätigt.
+> `dividend_call` kam mit M5 dazu (Nr. 21), `full_automation_warning` mit M7 (Nr. 23), beide
+> als reiner JSON-Eintrag ohne Code-Änderung. Die Überschrift bleibt als Chronik stehen:
+> 13 war der Stand bei M4.
+
 ## 19. Was die Simulation zu M4 zeigt
 
 Dieselbe Idee wie bei M2/M3, aber gegen den Ereigniskatalog statt gegen die Technologie:
@@ -551,6 +556,10 @@ Verantwortlicher im Team genügt. Level-1-Agenten bleiben damit das, was sie sei
 billige, zuverlässige Zuarbeit, die nur niemanden ersetzt.
 `test_full_staffing_beats_every_partial_staffing` bleibt über alle vier Projekttypen grün.
 
+> **Nach M8:** Der Test läuft nicht mehr über vier handgepflegte IDs, sondern über die
+> gesamte Registry — seit der Leiter sind das elf Baupläne (Nr. 32). Was er durchsetzt,
+> steht als Rechnung in Nr. 33.
+
 **Warum das zu M7 gehört:** Es ist genau der Weg, den der in Nr. 22 beschriebene Exploit
 genommen hat — Projekt mit dem Startmenschen anlegen, Menschen feuern, Level-1-Flotte
 weiterlaufen lassen. Nr. 22 nimmt dieser Flotte das Spielende, Nr. 24 nimmt ihr die
@@ -559,3 +568,467 @@ Einnahmen. Beide zusammen sagen dasselbe: Stufe 1 automatisiert niemanden weg.
 **Neu im Rundenbericht:** `PROJECT_NEGLECTED` bzw. `PROJECT_UNSUPERVISED` — ein fallender
 Servicegrad ist das Einzige, was der Spieler nicht am Team-Panel ablesen kann, und stand
 bisher (auch beim verlassenen Projekt) unkommentiert in der Bilanz.
+
+---
+
+# Nach M7: Simulation des Gesamtspiels
+
+> Alle Zahlen dieses Blocks sind mit [`tools/simulate.py`](../tools/simulate.py)
+> reproduzierbar — dem ersten Simulationsskript, das im Baum bleibt statt weggeworfen zu
+> werden. Es ist **nicht** Teil der Test-Suite: es misst die Balance, es behauptet nichts
+> über sie. Über jeder Tabelle steht der Aufruf, der sie erzeugt.
+>
+> Die Politiken spielen bewusst **einfach**, nicht optimal: Sie ziehen einen Plan durch
+> und beantworten jede Entscheidung nach derselben Regel wie schon Nr. 19 („die günstigste
+> sofort bezahlbare Option, sonst die erste"). Gemessen wird, ob die Zahlen in
+> `data/*.json` einen Plan tragen — nicht, wie gut ein guter Spieler ist.
+
+## 25. Das geheime Ende ist der Regelfall, nicht das schmale Fenster
+
+**Der Befund:** In **11 von 11 Seeds** endet ein Lauf, der automatisiert und die Menschen
+entlässt, sobald die Flotte die Projekte allein tragen kann, mit „FALSCHE HOFFNUNG" —
+dem Ende, das laut [VISION.md](./VISION.md) das seltene sein soll. Das Dystopie-Ende
+feuerte in dieser Konfiguration **kein einziges Mal**.
+
+```
+PYTHONPATH=src python3 tools/simulate.py --endings --seeds 11
+```
+
+| Menschen nach Flottenschluss gehalten | Ausgang (11 Seeds) | ⚖ beim Ende |
+|---|---|---|
+| +0 Runden | geheimes Ende 11 | 89 |
+| +1 Runde | geheimes Ende 11 | 80–85 |
+| +2 Runden | geheimes Ende 8, Dystopie 3 | 76–81 |
+| +3 Runden | **Dystopie 11** | 67–77 |
+| +4 Runden | Dystopie 11 | 58–73 |
+| +12 Runden | Dystopie 8, Bankrott 2, Kontrollverlust 1 | 16–63 |
+| +20 Runden | Kontrollverlust 8, Bankrott 3 | 11–63 |
+
+**Warum:** `_check_game_over` prüft am Ende **der Runde, in der die Vollautomatisierung
+zum ersten Mal gilt**. Bis genau zu dieser Runde stand mindestens ein Mensch auf der
+Gehaltsliste — sonst hätte die Flotte die Projekte nicht übernehmen können — und ein
+Mensch gibt +1 Alignment pro Runde (Nr. 9). Das Alignment hatte also nie Zeit zu fallen:
+gemessen 89, die Tier-Grenze liegt bei 80. Wer die Dystopie sehen will, muss überflüssige
+Menschen **drei Runden länger bezahlen**, als es wirtschaftlich sinnvoll ist.
+
+Die Tabelle in Nr. 22 hat das Gegenteil vorhergesagt („Dystopie ist der Normalfall").
+Sie hat die richtige Größe gemessen und die falsche Frage beantwortet: Sie zählt, wie
+viele Runden das Alignment **im vollautomatisierten Zustand** in jedem Fenster steht. Über
+das Ende entscheidet aber nur die **erste** dieser Runden — in jede weitere kommt der
+Spieler gar nicht mehr, weil das Spiel vorbei ist.
+
+**Was die Spec sagt:** [VISION.md](./VISION.md) formuliert die Bedingung als
+„Alignment > 80 **bis Spielende**" — eine Dauer. Implementiert ist eine Momentaufnahme.
+Das ist derselbe Fehlertyp wie in Nr. 22 und Nr. 24: *Eine Bedingung wurde an einem
+Zeitpunkt geprüft, obwohl sie eine Eigenschaft beschreibt.* Nr. 22 hat ihn eine Ebene
+tiefer behoben (welche Agenten zählen) und dabei die Ebene darüber (wann gezählt wird)
+stehen lassen.
+
+> **Die Tabelle oben ist der Stand vor M8.** Die Leiter (Nr. 32) hat die Verteilung
+> gekippt, ohne dass jemand die Enden angefasst hat: Bei +0 Runden steht heute
+> Dystopie 11/11 statt geheimes Ende 11/11. Neu gemessen in **Nr. 37** — der
+> Zeitpunkt-statt-Dauer-Fehler unten gilt unverändert weiter.
+
+**Bewusst nicht hier behoben.** Jede Auflösung ändert, was die beiden Enden *bedeuten* —
+ob „Alignment gehalten" eine Frist braucht, ob das geheime Ende überhaupt beim Übergang
+feuern darf, ob die Vollautomatisierung eine Karenzrunde bekommt. Das ist ein Meilenstein,
+keine Zahlenkorrektur; siehe die offenen Punkte in
+[milestones/README.md](./milestones/README.md).
+
+## 26. Die Vorwarnung zur Vollautomatisierung erreicht den Spieler fast nie
+
+`full_automation_warning` (`min_agents: 6, max_humans: 1`, Chance 0,2) kann nur in dem
+Zustand feuern, der in Nr. 25 **eine bis zwei Runden** dauert: Flotte fertig, letzter
+Mensch noch da. Über 51 Seeds je Politik:
+
+| Menschen gehalten | Vorwarnung feuerte vor dem Ende |
+|---|---|
+| +0 Runden | 6 von 51 |
+| +3 Runden | 3 von 51 |
+| +6 Runden | 10 von 51 |
+| +10 Runden | 5 von 51 |
+
+Nr. 23 hat die großzügige Bedingung des Ereignisses verteidigt („als Warnung darf es früher
+greifen als das Ende, vor dem es warnt") und dabei angenommen, die Bedingung sei die
+bindende Grenze. Sie ist es nicht — **die Zeit ist es**. Solange das Ende in der ersten
+Runde der Vollautomatisierung feuert, hat eine Vorwarnung mit 20 % Chance keine Gelegenheit.
+Der Punkt hängt damit an Nr. 25 und wird mit ihr zusammen entschieden, nicht getrennt.
+
+## 27. Agentenstufe 3 ist wirtschaftlich ein Rückschritt
+
+```
+PYTHONPATH=src python3 tools/simulate.py --steady
+```
+
+Einnahmen und Kosten pro Runde, nachdem sich Qualität, Ästhetik und Servicegrad
+eingependelt haben — Ereignisse aus, Tokenpreis auf 10 € festgenagelt, also eine
+Eigenschaft von `data/*.json` allein:
+
+| Projekt | Besetzung | Einnahmen | Kosten | Netto | Laufzeit-Ertrag |
+|---|---|---:|---:|---:|---:|
+| ecommerce_shop | Mensch+Lv1 | 208,0 | 100,0 | 108,0 | 1.728 |
+| ecommerce_shop | Agent Lv2 | 197,6 | 80,0 | **117,6** | 1.882 |
+| ecommerce_shop | Agent Lv3 | 187,2 | 110,0 | 77,2 | 1.235 |
+| web_app | Mensch+Lv1 | 337,0 | 150,0 | **187,0** | 4.114 |
+| web_app | Agent Lv2 | 320,1 | 148,0 | 172,1 | 3.787 |
+| web_app | Agent Lv3 | 303,3 | 196,0 | 107,3 | 2.361 |
+| web_app | Menschen | 337,0 | 250,0 | 87,0 | 1.914 |
+
+(„Mensch+Lv1" ist eine gemischte Besetzung, weil eine reine Level-1-Besetzung nach Nr. 24
+gar nichts verdient.)
+
+**Stufe 3 ist auf allen vier Projekten schlechter als Stufe 2** — teurer *und* ertragsärmer:
+
+- Der Tokenpreis steigt auf das 2,2-fache, die Effizienz nur auf das 1,33-fache von Stufe 2.
+- Und die zusätzliche Effizienz verpufft: Attribute sind bei 100 gedeckelt (Nr. 12), und
+  den Deckel erreicht ein vollbesetztes Team schon mit **Level-1**-Agenten. Effizienz
+  oberhalb des Deckels kauft nichts.
+- Die Einnahmen *fallen* sogar mit der Stufe (web_app 337 → 320 → 303), weil erst ab
+  Stufe 2 Nebeneffekte existieren: Entwickler-Bugs (2 % / 5 %) und die Designer-Routine
+  (−5 / −10 Sichtbarkeit ab fünf Runden auf demselben Projekt).
+
+> **Nach M8 über elf Baupläne nachgemessen: gilt weiter, und schärfer.** Stufe 3 ist auf
+> **11 von 11** Projekten schlechter als Stufe 2, und auf den großen Aufträgen kippt sie ins
+> Minus (Konzern-Suite −91, Konzern-KI-Plattform −180 gegen +78 und +23 bei Stufe 2). Am
+> oberen Ende der Leiter schlägt außerdem ein gemischtes Team aus einem Menschen und
+> Level-1-Agenten (+293 / +295, Nr. 34) jede reine Agentenflotte deutlich — Bugs und
+> Designer-Routine ab Stufe 2 kosten dort mehr, als die Effizienz einbringt.
+
+Das ist zur Hälfte die beabsichtigte Satire — Automatisierung ist eine Falle — aber es
+macht Stufe 3 **ausschließlich** zur Türöffnerin für `autonomous_agents` und
+`ai_consciousness`. Als Kaufentscheidung für sich ist sie nie richtig, und der Spieler
+sieht das im Rundenbericht sofort. Nicht geändert: Die Zahlen dahinter (Nr. 5, Nr. 7)
+sind kalibriert, und eine Korrektur an dieser Stelle würde die Level-1-Empfehlung aus
+Nr. 22/24 wieder aufweichen. Als offener Punkt geführt.
+
+**Nebenbefund zu einem offenen Punkt:** „Kunden-App und Web-App sind wirtschaftlich fast
+identisch" gilt nur noch für ein **Menschen**-Team (87,5 gegen 87,0 pro Runde). Für jedes
+Agenten-Team hat die Kunden-App die Nase vorn (Lv2: 203,9 gegen 172,1; über die Laufzeit
+4.487 gegen 3.787 €) — die Sales-Stelle bringt +25 % Sichtbarkeit mal Effizienz, während
+die zweite Entwicklerstelle der Web-App vor allem zusätzliche Bugs beisteuert.
+
+## 28. Der gefährliche Ast ist erreichbar — aber nicht aus einer hochgerüsteten Flotte
+
+Zwei Strategien mit **identischem Forschungsplan** (der ganze DANGEROUS-Ast), 80 Runden,
+11 Seeds — der einzige Unterschied ist, woraus die Forschung bezahlt wird:
+
+| Strategie | Besetzung | Ausgang |
+|---|---|---|
+| `full-tree` | jede Stelle auf die höchste freigeschaltete Stufe | Bankrott 10/11 (R10–19) |
+| `dangerous-tree` | Level-1-Flotte + ein Mensch, drei Projekte | **Kontrollverlust 8/11 (R72–74)**, Bankrott 3/11 |
+
+Der Ast ist also vollständig spielbar, und er endet dort, wo er enden soll. Zeitachse
+eines typischen Laufs: Stufe 2 in R5, `ai_alignment` R11, `bug_fixing` R16, Stufe 3 R25,
+`autonomous_agents` R38, `ai_consciousness` R58 — Kontrollverlust R74.
+
+Nr. 22 hat den naiven Alles-automatisieren-Lauf im Bankrott von Runde 3–6 enden sehen;
+`full-tree` ist dieselbe Beobachtung mit mehr Forschung dahinter. Was beide zeigen, ist
+nicht „Automatisierung ist zu teuer", sondern die Kehrseite von Nr. 27: **jede Stelle
+hochzurüsten kostet Tokens und bringt nichts.**
+
+**Und wieder ist Geld nicht der Engpass:** Der Lauf, der bei R74 die Kontrolle verliert,
+tut das mit **23.182 €** auf dem Konto. Der offene Punkt „Geldsenke fehlt" (M3, von M4/M5
+teilweise beantwortet) gilt für einen Spieler, der einmal drei Projekte am Laufen hat,
+unverändert weiter.
+
+## 29. Die Bankrottquote aus Nr. 19 hing an der Politik, nicht an den Zahlen
+
+Nr. 19 hat für das reine Menschen-Team an einer Web-App **45 % Bankrott** gemessen und
+daraus geschlossen, M4 habe eine echte Geldsenke geliefert. Nachgestellt mit derselben
+Ereignis-Regel, denselben 60 Runden und elf Seeds:
+
+| Politik | Ausgang | Median-Tiefststand |
+|---|---|---|
+| Projekt nach Ablauf **ersetzt** | überlebt 11/11 | 618 € |
+| Projekt nach Ablauf **nicht ersetzt** | Bankrott 11/11 | −156 € |
+
+Die Web-App läuft 22 Runden; danach zahlt ein Team, das kein neues Projekt annimmt, 38
+Runden lang Gehälter ohne Einnahmen. **Das** hat Nr. 19 gemessen — Leerlauf, keine dünne
+Marge. Die Reserve, mit der die Politik einstellt, ändert nichts (0 €, 150 € und 300 €
+liefern dieselben 11/11).
+
+Was die Ereignisse tatsächlich kosten, ist trotzdem messbar, nur anders gelagert
+(Menschen-Team, 60 Runden, 11 Seeds):
+
+| | Endgeld (Median) | Tiefststand (Median) |
+|---|---:|---:|
+| mit Ereignissen | 1.697 € | 618 € |
+| ohne Ereignisse | 4.313 € | 636 € |
+
+Rund 2.600 € über 60 Runden, also etwa 43 €/Runde gegen eine Marge von 87 €/Runde — die
+Ereignisse halbieren das Wachstum, aber sie drücken den Tiefpunkt nicht (618 gegen 636 €).
+Sie sind eine **Wachstumssteuer, keine Überlebensfrage**. Der Startanteil der Investoren
+(15 %, Nr. 21) kostet dasselbe Team über 60 Runden 159 € — spürbar wenig.
+
+**Folge für Nr. 19:** Die dortige Tabelle bleibt als Chronik stehen, ihre Schlussfolgerung
+gilt aber nur unter der stillschweigenden Annahme, dass der Spieler kein Anschlussprojekt
+annimmt. Wer eines annimmt, hat keine knappen Runden.
+
+## 30. Die Token-Inflation greift innerhalb einer Partie nicht
+
+`TOKEN_PRICE_INFLATION = 1.01` soll Agenten teurer machen, „je länger man sich auf sie
+verlässt". Über 200 Seeds reiner Marktbewegung:
+
+| Runde | Median | Spanne |
+|---|---:|---|
+| 20 | 11,56 € | 6,24 – 24,06 € |
+| 60 | 15,38 € | 5,80 – 61,02 € |
+| 120 | 25,98 € | 6,31 – 191,76 € |
+
+Zwei Dinge stehen darin. Erstens ist die Drift langsamer als 1 % — der multiplikative
+Zufall (±10 %) zieht den geometrischen Mittelwert unter den arithmetischen, faktisch
+bleiben ≈ 0,8 %/Runde. Zweitens ist die **Spanne größer als die Drift**: nach 60 Runden
+liegt der Preis in manchen Läufen *unter* dem Startwert.
+
+Für die Web-App kostet ein Team aus einem Menschen und Level-1-Agenten erst bei ≈ 30 €
+pro Token so viel wie ein reines Menschen-Team — im Median etwa Runde 135. Eine reine
+Level-2-Flotte erreicht ihren Gleichstand bei ≈ 17 €, im Median etwa Runde 70. Beides
+liegt am Ende oder jenseits einer gespielten Partie: **Die Inflation ist als Drohung
+gemeint und wirkt als Rauschen.** Nicht geändert — die Konstante ist eine Zeile in
+`core/economy.py`, aber welcher Wert richtig ist, hängt an der Zielspiellänge, und die
+ist nirgends festgeschrieben.
+
+## 31. Was die Simulation zum Gesamtspiel zeigt
+
+```
+PYTHONPATH=src python3 tools/simulate.py --seeds 11 --turns 60
+PYTHONPATH=src python3 tools/simulate.py --seeds 11 --turns 60 --projects 3
+```
+
+| Strategie | ein Projekt | drei Projekte |
+|---|---|---|
+| `humans` — nur Menschen | überlebt 11/11, Tief 618 € | überlebt 11/11, Tief 618 € |
+| `humans+funding` — dazu Büro-Ausbau und Finanzierungsrunden | überlebt 11/11 | überlebt 8/11, Bankrott 3/11 (R47–50) |
+| `level1-fleet` — ein Mensch, Rest Level-1-Agenten | überlebt 10/11 | überlebt 11/11, Endgeld 10.183 € |
+| `automation` — Stufe 2, Menschen entlassen | geheimes Ende 11/11 (R7) | geheimes Ende 11/11 (R6) |
+| `full-tree` — alles hochrüsten | Bankrott 10/11 | Bankrott 8/11 |
+| `dangerous-tree` — Level-1-Flotte, ganzer Baum (80 Runden) | — | Kontrollverlust 8/11 (R72–74) |
+
+> **Die Tabelle oben ist der Stand vor M8.** Mit der Leiter (Nr. 32) gilt keine ihrer
+> Zeilen mehr — `humans` überlebt keine 120 Runden, `automation` endet in der Dystopie
+> statt im geheimen Ende, und kein Lauf endet mit fünfstelligem Überschuss. Neu gemessen
+> in **Nr. 38**.
+
+Vier Befunde, die keiner der obigen Nummern allein gehören:
+
+1. **Alle vier Enden sind erspielbar** — Bankrott, Kontrollverlust, Dystopie und das
+   geheime Ende sind in dieser Simulation jeweils in normal gespielten Läufen aufgetreten,
+   nicht nur in Test-Fixtures. Ihre *Verteilung* ist das Problem, nicht ihre
+   Erreichbarkeit (Nr. 25).
+2. **Der Bürodeckel bindet härter als jede Zahl in `roles.json`.** `humans` liefert mit
+   einem und mit drei erlaubten Projekten exakt dasselbe Ergebnis: Mit 3 Plätzen ist nach
+   *einer* Web-App Schluss. Damit ist der offene Punkt aus Nr. 20 beantwortet — der
+   Büro-Ausbau ist nicht optional dekorativ, er ist die einzige Tür zum zweiten Projekt,
+   und aggressiv genutzt (`humans+funding`, drei Projekte) kostet er 3 von 11 Läufen.
+3. **Die Level-1-Flotte bleibt die stärkste Strategie**, wie seit M2 beabsichtigt —
+   inzwischen aber ohne jedes Risiko: 11/11 überlebt und 10.183 € am Ende. Sie ist nicht
+   mehr nur tragfähig, sie ist bequem.
+4. **Automatisieren beendet das Spiel schneller als jede andere Entscheidung** — Runde 6
+   bis 7, gegen Runde 72 für den gefährlichen Ast und „gar nicht" für Menschen und
+   Level-1-Agenten. Die Ironie aus VISION.md („je besser der Spieler automatisiert, desto
+   schneller kommt der Twist") stimmt also — nur ist der Twist derzeit immer derselbe.
+
+---
+
+# Meilenstein 8
+
+## 32. Jeden Auftrag gibt es einmal — und die Leiter hat Sprossen
+
+**Der Befund aus Nr. 31, der das ausgelöst hat:** Das Spiel hatte keine Steigerung.
+`humans` lieferte mit einem *und* mit drei erlaubten Projekten dasselbe Ergebnis, weil
+„Web-App auf Dauerschleife" das Optimum war. Ein Katalog, aus dem man beliebig oft
+dasselbe nehmen kann, ist keine Auswahl, sondern eine Wiederholung.
+
+**Auflösung, zwei Regeln:**
+
+1. **Einmaligkeit.** `GameState.started_projects` merkt sich jeden vergebenen Bauplan.
+   Vermerkt wird beim **Start**, nicht beim Ablauf — ein laufendes Projekt lässt sich
+   nicht abbrechen, also ist der Start der Moment, in dem der Kunde bedient ist. Die Liste
+   liegt neben `active_projects`, weil die am Ende der Laufzeit geleert wird.
+2. **Referenzen.** Jeder Bauplan trägt in `data/projects.json` ein `requires` — dieselbe
+   Form wie `Technology.requires`, dieselbe Prüfung (`ProjectRegistry.missing_requirements`).
+   Ein Kunde vergibt den großen Auftrag an den, der den kleineren vorweisen kann.
+
+Beides ist Konfiguration: Ein zwölfter Bauplan ist ein JSON-Eintrag, keine Code-Änderung.
+
+**Der Katalog wächst beim Abarbeiten, er schrumpft nicht** — genau das ist die Leiter:
+
+| Stellen | Auftrag | Referenz |
+|---:|---|---|
+| 1 | Statische Website, Landingpage | — |
+| 2 | E-Commerce-Shop | Statische Website |
+| 3 | Kunden-App, Web-App | E-Commerce-Shop |
+| 4 | Konzern-Warenwirtschaft ← Web-App · KI-Integration ← Kunden-App | |
+| 5 | SaaS-Plattform | KI-Integration |
+| 6 | Plattform-Neubau | Konzern-Warenwirtschaft |
+| 7 | Konzern-Suite | Plattform-Neubau |
+| 8 | Konzern-KI-Plattform | Konzern-Suite **und** SaaS-Plattform |
+
+Der letzte Auftrag verlangt **beide** Äste. Es gibt keine einzelne Linie, die ihn erreicht —
+wer ihn will, arbeitet den Katalog durch.
+
+## 33. Zwei Untergrenzen, die jedes neue `base_income` einhalten muss
+
+`test_full_staffing_beats_every_partial_staffing` ist seit M3 die Eigenschaft, „die die
+ganze Mechanik trägt" (CLAUDE.md). Sie ist keine Empfehlung, sie ist eine **Rechnung**, und
+die lässt sich hinschreiben. Eine Stelle zu streichen senkt den Attribut-Deckel um
+`(100 − attribute_cap_base) / n` Prozentpunkte, also die Einnahmen um denselben Anteil.
+Damit die volle Besetzung gewinnt, muss dieser Verlust größer sein als das gesparte Gehalt:
+
+| Rolle | Bedingung |
+|---|---|
+| Entwickler | `base_income · Sichtbarkeit > 160 · n_Entwickler` |
+| Designer | `base_income · Sichtbarkeit > 140 · n_Designer` |
+| Sales | `base_income > 240` |
+
+Die Sales-Grenze steht dort, weil eine Sales-Stelle 60 € kostet und 25 % Sichtbarkeit
+bringt: unter 240 € Basis-Einnahmen ist sie ihr Gehalt nicht wert. Die Kunden-App liegt
+mit 246 € seit M1 knapp darüber — die Grenze war also immer da, nur nie aufgeschrieben.
+
+**Ausnahme Ein-Stellen-Projekte:** Wird deren einzige Stelle gestrichen, ist niemand mehr
+zugewiesen, der Servicegrad fällt auf 0 und das Projekt verdient gar nichts (Nr. 11/24).
+Für sie gilt nur `base_income > Gehalt`. Deshalb kommt die Statische Website mit 108 €
+durch, wo die Formel 160 € verlangen würde.
+
+`test_full_staffing_beats_every_partial_staffing` läuft seit M8 über die **Registry**
+statt über eine handgepflegte Liste — bei elf Baupländen fällt eine verletzte Grenze sonst
+niemandem auf.
+
+## 34. Die Menschen-Wand liegt bei sechs Stellen — gesetzt über Fixkosten, nicht über Einnahmen
+
+Vorgabe für M8: Der reine Menschen-Pfad soll ab einer Stufe **unbezahlbar** werden. Der
+naheliegende Hebel wäre, die Einnahmen der großen Aufträge zu drücken — der ist aber
+**verbaut**: Nr. 33 verlangt `base_income · vis > 160 · n_Entwickler`, und daraus folgt für
+ein Menschen-Team zwangsläufig ein Ertrag von mindestens `80 € · n_Entwickler` minus der
+übrigen Gehälter. Über `base_income` lässt sich ein großer Auftrag also gar nicht defizitär
+machen, ohne die Invariante zu brechen.
+
+**Auflösung:** `basis_fixed_costs`. Fixkosten hängen nicht an der Besetzung, verschieben
+also **nur das Niveau** und nie den Vergleich zwischen zwei Besetzungen — die Invariante
+bleibt unberührt, das Vorzeichen kippt trotzdem. Erzählerisch trägt es sich von selbst:
+Ein Konzernauftrag bringt Infrastruktur, Lizenzen und Compliance mit.
+
+Eingeschwungener Zustand, `tools/simulate.py --steady`, Tokenpreis 10 €:
+
+| Stellen | Auftrag | Menschen | Mensch + Level-1-Agenten |
+|---:|---|---:|---:|
+| 3 | Web-App | +87,0 | +187,0 |
+| 4 | Konzern-Warenwirtschaft | +95,0 | +245,0 |
+| 5 | SaaS-Plattform | +75,5 | +287,0 |
+| 6 | Plattform-Neubau | **+20,0** | +282,0 |
+| 7 | Konzern-Suite | **−25,0** | +293,0 |
+| 8 | Konzern-KI-Plattform | **−80,0** | +295,0 |
+
+Die Wand steht bei **sechs Stellen**, und sie steht nicht erst beim Vorzeichen: Sechs
+Stellen brauchen sieben Büroplätze, also zwei Ausbauten (900 € über den Deckel von fünf),
+und tragen über 28 Runden 560 € ein. Der Schreibtisch verdient sich nicht zurück, bevor
+die Einnahmen überhaupt negativ werden. Ab sieben Stellen zahlt man drauf.
+
+Agenten brauchen keinen Schreibtisch (M5) und kosten ein Drittel. Ihr Ertrag pro Runde
+läuft ab Stufe 5 flach (287 → 295), ihr **Laufzeit-Ertrag** steigt weiter (7.462 → 9.440 €),
+weil die großen Aufträge länger laufen. Automatisieren ist damit nicht mehr die bessere
+Rechnung, sondern ab Stufe 6 die einzige.
+
+## 35. Nicht angeforderte Qualität war nie neutral
+
+**Der Fehler:** Nr. 2 hält seit M1 fest, dass Attribute, die ein Projekt nicht anfordert,
+als Faktor 1,0 zählen. Umgesetzt war das nur für **Ästhetik** (`aesthetics_applies`), weil
+bis M8 jedes Projekt eine Entwicklerstelle hatte. Die Landingpage (nur Designer) hat den
+Fall aufgedeckt: Sie verdiente 49 statt 98 € — die Hälfte, weil `quality` bei
+`attribute_start = 50` stehen blieb und trotzdem multipliziert wurde.
+
+**Auflösung:** `economy.attribute_applies(project, attribute)` liest die Frage aus
+`ROLE_ATTRIBUTES` ab, statt zwei Rollennamen fest zu verdrahten — „kein Entwickler" und
+„kein Designer" sind damit derselbe Fall. `calculate_income` hat jetzt beide Schalter.
+
+Dritter Fall derselben Art nach Nr. 22 und Nr. 24, diesmal andersherum: keine Bedingung,
+die zum falschen Zeitpunkt geprüft wurde, sondern eine Regel, die **für einen Fall
+formuliert und für einen Sonderfall implementiert** wurde. Kein Test deckte sie ab, weil es
+den Fall im Katalog nicht gab.
+
+## 36. Keine Forscher-Stellen auf Projekten
+
+Die Spec definiert `ENTERPRISE_SOFTWARE` und `KI_INTEGRATION` mit je einer
+**Forscher**-Stelle. Beide Baupläne gibt es jetzt, beide **ohne** sie.
+
+**Grund:** Ein Forscher hält kein Projektattribut (`ROLE_ATTRIBUTES` kennt nur Entwickler
+und Designer) und bringt keine Sichtbarkeit. Seine Stelle leer zu lassen spart 90 €/Runde
+und kostet fast nichts — nur einen langsameren Servicegrad-Aufbau, der die 100 trotzdem
+erreicht (Nr. 12). Die Teilbesetzung schlägt damit die Vollbesetzung, und Nr. 33 fällt.
+
+**Verworfen:** Forscher auf `quality` zusätzlich zum Entwickler abzubilden. Zwei Rollen auf
+demselben Attribut ziehen in `_apply_worker_effects` gegeneinander — die leere
+Forscher-Stelle drückt mit `attribute_entropy` nach unten, die besetzten Entwicklerstellen
+schieben im selben Zug wieder hoch. Das Ergebnis hängt an der Schlüsselreihenfolge im JSON
+und ist ein Patt, keine Strafe.
+
+**Offen:** Eine Forscher-Stelle auf einem Projekt braucht zuerst ein Attribut, das sie hält.
+Solange es das nicht gibt, bleibt Forschung eine reine Abteilungssache.
+
+## 37. Was die Leiter mit den Enden macht
+
+Dies ist der Befund, den M8 **nicht gesucht hat.** Nr. 25 hat gemessen: Wer automatisiert
+und die Menschen entlässt, sobald die Flotte trägt, bekommt „FALSCHE HOFFNUNG" in 11 von 11
+Seeds; die Dystopie nur, wer überflüssige Menschen drei Runden zu lang bezahlt. Dieselbe
+Messung nach M8 (`tools/simulate.py --endings --seeds 11`):
+
+| Menschen nach Flottenschluss gehalten | vor M8 | nach M8 |
+|---|---|---|
+| +0 Runden | geheimes Ende 11 (⚖ 89) | **Dystopie 11 (⚖ 66–76)** |
+| +3 Runden | Dystopie 11 | Dystopie 11 (⚖ 43–58) |
+| +8 Runden | Dystopie 10, Bankrott 1 | Kontrollverlust 9, Bankrott 2 |
+
+**Warum:** Die Leiter verlängert den Anlauf. Vor M8 stand die Flotte in Runde 6–7, weil ein
+wiederholbares Projekt sie sofort finanzierte; jetzt muss sich das Unternehmen erst
+hocharbeiten und erreicht die Vollautomatisierung in Runde 11. In diesen zusätzlichen
+Runden laufen die Level-2-Agenten bereits und zehren am Alignment. Es steht beim Übergang
+bei 66–76 statt bei 89 — unter der Grenze von 80.
+
+**Das geheime Ende bleibt erreichbar, aber nur noch für den, der die Leiter überspringt:**
+Stufe 2 erforschen, sechs Level-2-Agenten auf einmal kaufen, alle Menschen entlassen, ohne
+sich um Aufträge zu kümmern — 21 von 21 Seeds enden in Runde 7 bei ⚖ 94 mit „FALSCHE
+HOFFNUNG". Das ist genau die Ironie, die [VISION.md](./VISION.md) beschreibt („je besser der
+Spieler automatisiert, desto schneller kommt der Twist"), und das seltene Ende ist jetzt
+tatsächlich das seltene.
+
+**Ausdrücklich nicht behoben:** Der Kern von Nr. 25 steht unverändert. `_check_game_over`
+prüft weiterhin einen **Zeitpunkt**, wo [VISION.md](./VISION.md) eine **Dauer** verlangt
+(„Alignment > 80 bis Spielende"). Verändert hat sich nur, mit welchem Alignment normales
+Spiel an diesem Zeitpunkt ankommt. Eine spätere Änderung am Tempo — schnellere Forschung,
+billigere Agenten, ein kürzerer Katalog — kippt die Verteilung wieder zurück, ohne dass
+jemand die Enden angefasst hätte. Der offene Punkt bleibt offen.
+
+## 38. Was die Simulation zu M8 zeigt
+
+```
+PYTHONPATH=src python3 tools/simulate.py --seeds 11 --turns 60
+PYTHONPATH=src python3 tools/simulate.py --seeds 11 --turns 120
+```
+
+Drei gleichzeitige Projekte (Voreinstellung seit M8 — mit nur einem kommt keine Politik
+über die dritte Sprosse hinaus):
+
+| Strategie | 60 Runden | größte Stufe | 120 Runden |
+|---|---|---:|---|
+| `humans` | überlebt 10/11 | 3 | **Bankrott 11/11 (R21–79)** |
+| `humans+funding` | Bankrott 7/11 | 5 | Bankrott 11/11 (R31–85) |
+| `level1-fleet` | überlebt 11/11 | 8 | Bankrott 6/11 (R64–95), Katalog leer 8/11 |
+| `automation` | **Dystopie 11/11 (R11)** | 4 | Dystopie 11/11 |
+| `dangerous-tree` | überlebt 8/11 | 8 | Kontrollverlust 8/11 (R70–73) |
+
+Vier Befunde:
+
+1. **Das Plateau ist weg.** `humans` lief vor M8 über 60 Runden ohne eine knappe Runde
+   durch und endete bei 1.697 €. Jetzt arbeitet es fünf Aufträge ab, kommt mit drei
+   Büroplätzen nie über drei Stellen hinaus und geht daran ein.
+2. **Der Bürodeckel ist die Sprosse, an der der Menschen-Pfad hängt.** `humans` und
+   `humans+funding` unterscheiden sich nur im Ausbau — und das trennt Stufe 3 von Stufe 5.
+   Über Stufe 5 kommt auch der Ausbau nicht (Nr. 34).
+3. **Der Katalog geht aus, und das bringt um.** `level1-fleet` arbeitet über 120 Runden
+   alle elf Aufträge ab (Katalog leer in 8 von 11 Läufen) und geht danach in 6 von 11
+   Läufen bankrott: keine Aufträge, aber weiterlaufende Gehälter. Das ist die Lücke, die
+   die Produkte füllen sollen — **absichtlich offen gelassen**, nicht übersehen.
+4. **Geld ist zum ersten Mal knapp.** Der offene Punkt „Geldsenke fehlt" (seit M3) ist
+   damit beantwortet: Es gibt keinen Lauf mehr, der mit 10.000–23.000 € endet, weil jede
+   weitere Sprosse Personal, Schreibtische und Fixkosten verlangt. Was die Ereignisse (M4),
+   das Büro (M5) und die Investoren (M5) nicht geschafft haben, schafft die Leiter.

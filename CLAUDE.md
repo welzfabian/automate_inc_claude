@@ -10,7 +10,16 @@ pytest                           # all tests (pyproject sets pythonpath=["src"])
 pytest tests/test_turn.py::test_bankruptcy_ends_the_game    # a single test
 PYTHONPATH=src python3 -m automate_inc                      # run without the launcher
 ruff check .                     # lint; the tree is clean, keep it that way
+
+PYTHONPATH=src python3 tools/simulate.py                    # balance sim, every strategy
+PYTHONPATH=src python3 tools/simulate.py --endings          # which ending fires, and why
+PYTHONPATH=src python3 tools/simulate.py --steady           # income/costs per blueprint
 ```
+
+`tools/simulate.py` plays the game with scripted policies over many seeds. It is
+deliberately **not** part of the test suite: it measures the balance, it asserts nothing
+about it. Every table under "Nach M7" in `docs/BALANCING.md` names the invocation that
+produced it — re-run those before changing a number in `data/*.json`.
 
 `ruff check .` passes as of M3. `UP042` is switched off on purpose: the enums mix in
 `str` because they are serialised through `.value` into the save file, and moving them to
@@ -60,6 +69,21 @@ questions instead of checking technology IDs. A new technology that reuses an ex
 modifier field is pure configuration in `data/technologies.json`; a new field needs an
 entry in the `AGGREGATION` table (max / multiplicative / additive) and nothing else.
 
+**Every job exists once, and the catalogue is a ladder.** `GameState.started_projects`
+records a blueprint when it is *started*; `ProjectBlueprint.requires` names the smaller jobs
+a client wants to see first - the same shape and the same check as `Technology.requires`, so
+a new rung stays pure configuration. `Game.available_blueprints()` is the single source for
+what may be started, the way `free_slots` is for who may be assigned. Taking a job does not
+shrink the catalogue, it *opens* the next rung - that is the ladder.
+
+**Adding a project is configuration, but `base_income` is not free.**
+`test_full_staffing_beats_every_partial_staffing` imposes an arithmetic floor:
+`base_income x visibility > 160 x n_developers` and `> 140 x n_designers`, and
+`base_income > 240` for anything with a sales post (`BALANCING.md` 33). One-post jobs are
+exempt - dropping their only worker empties the project. To make a job *unprofitable* for a
+human team, raise `basis_fixed_costs`, never lower `base_income`: fixed costs shift the
+level without touching the comparison between two staffings (`BALANCING.md` 34).
+
 **A project earns what the client is currently getting.** `Project.service_level` (0-100)
 scales income, and it falls when nobody maintains the project - which is why it is not
 called progress: 100 is a ceiling the team holds, not a finished state.
@@ -94,7 +118,9 @@ When docs and `data/*.json` disagree, the JSON wins — and any new deviation go
 Two rules there are easy to break by accident:
 - **Humans have `effective_level == 2`**, so a project can be started at all on turn 0.
 - **Attributes a project never required are neutral** (factor 1.0) in the income
-  formula, not zero.
+  formula, not zero - read off `economy.attribute_applies`, which asks `ROLE_ATTRIBUTES`
+  rather than naming roles. This held for aesthetics only until M8 added a job with no
+  developer on it (`BALANCING.md` 35).
 
 ## Process
 
@@ -108,7 +134,15 @@ serialised field — `from_dict` rejects unknown versions on purpose.
 **Balancing numbers are simulated, not guessed.** M3 predicted that technology costs
 would have to triple and the simulation refuted it — the bottleneck was never money. Any
 number that shapes the pacing of a run gets played or simulated before it is written into
-`data/*.json`, and the reasoning goes into `BALANCING.md`.
+`data/*.json`, and the reasoning goes into `BALANCING.md`. Use `tools/simulate.py` for
+that; add a `Strategy` to it rather than writing a throwaway script, so the next milestone
+can re-run what this one measured.
+
+**A simulation measures the quantity it measures.** `BALANCING.md` 22, 25 and 29 are the
+same mistake in three places: a number was read as the answer to a question it was never
+asked. Before trusting a measurement, check that the policy producing it plays the way a
+player would — Nr. 29's 45 % bankruptcy rate came from a team that never took a second
+project after its first one expired.
 
 **The missing money sink stays an open point.** M4 answers it in part (recurring fixed
 costs from events), deliberately not in full. Do not tick it off in

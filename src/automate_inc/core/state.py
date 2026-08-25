@@ -11,7 +11,7 @@ from automate_inc.core.events import ActiveEffect
 from automate_inc.core.projects import Project
 from automate_inc.core.workers import Worker
 
-SAVE_FORMAT_VERSION = 6
+SAVE_FORMAT_VERSION = 7
 
 START_MONEY = 1000.0
 START_TOKENS = 50.0
@@ -86,6 +86,13 @@ class GameState:
     investor_equity: float = START_INVESTOR_EQUITY
     """Percentage of income permanently owed to investors, see ``Game.raise_funding``.
     Starts above zero: the seed round already sold a slice, on turn 0."""
+    started_projects: list[str] = field(default_factory=list)
+    """Blueprint IDs already commissioned, in order. Every job exists once (M8).
+
+    Recorded when the project *starts*, not when it expires: there is no way to
+    cancel one, so starting it is the moment the client is served. Kept separately
+    from ``active_projects`` because those vanish at the end of their lifetime and
+    the catalogue still has to remember them."""
 
     def phase(self, unlocked_agent_level: int = 1) -> Phase:
         """Which phase the company is in, derived from what the player has done.
@@ -149,6 +156,7 @@ class GameState:
             "last_net": self.last_net,
             "office_capacity": self.office_capacity,
             "investor_equity": self.investor_equity,
+            "started_projects": list(self.started_projects),
         }
 
     @classmethod
@@ -177,6 +185,7 @@ class GameState:
             last_net=data["last_net"],
             office_capacity=data["office_capacity"],
             investor_equity=data["investor_equity"],
+            started_projects=list(data["started_projects"]),
         )
 
     def save(self, path: Path) -> None:

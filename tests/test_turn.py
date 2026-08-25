@@ -2,7 +2,7 @@
 
 import pytest
 
-from _helpers import advance
+from _helpers import advance, commission
 from automate_inc.core import economy
 from automate_inc.core.game import Game
 from automate_inc.core.state import GameState, Phase
@@ -12,7 +12,7 @@ from automate_inc.core.workers import Role, WorkerType
 def staffed_game(blueprint_id="static_website", worker_type=WorkerType.HUMAN, seed=5) -> Game:
     game = Game(seed=seed)
     game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN)
-    game.start_project(blueprint_id)
+    commission(game, blueprint_id)
     project_id = game.state.active_projects[0].id
     blueprint = game.registry.get(blueprint_id)
     if worker_type is WorkerType.AGENT:
@@ -224,7 +224,7 @@ def agent_game(role=Role.DEVELOPER, level=2, seed=6, lifetime=100) -> Game:
 
     game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN)
     starter = game.state.workers[0]
-    assert game.start_project(BLUEPRINT_FOR[role]).ok
+    assert commission(game, BLUEPRINT_FOR[role]).ok
     assert game.fire_worker(starter.id).ok
 
     game.hire_worker(role, WorkerType.AGENT, level)
@@ -319,7 +319,7 @@ def test_the_staleness_penalty_scales_with_the_agent_level():
 def test_human_designers_never_go_stale():
     game = Game(seed=6)
     game.hire_worker(Role.DESIGNER, WorkerType.HUMAN)
-    assert game.start_project("ecommerce_shop").ok
+    assert commission(game, "ecommerce_shop").ok
     project = game.state.active_projects[0]
     project.lifetime = 100
     game.assign_worker(game.state.workers[0].id, project.id)
@@ -345,7 +345,7 @@ def test_reassignment_resets_the_staleness_counter():
 def test_free_slots_counts_down_as_the_posts_fill():
     game = Game(seed=2)
     game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN)
-    game.start_project("web_app")                      # 2x Entwickler, 1x Designer
+    commission(game, "web_app")                      # 2x Entwickler, 1x Designer
     project = game.state.active_projects[0]
     assert game.free_slots(project, Role.DEVELOPER) == 2
     game.assign_worker(game.state.workers[0].id, project.id)
@@ -355,15 +355,15 @@ def test_free_slots_counts_down_as_the_posts_fill():
 def test_a_role_the_project_never_asked_for_has_no_slots():
     game = Game(seed=2)
     game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN)
-    game.start_project("static_website")               # only a developer
+    commission(game, "static_website")               # only a developer
     assert game.free_slots(game.state.active_projects[0], Role.SALES) == 0
 
 
 def test_projects_needing_a_role_skips_the_ones_that_do_not():
     game = Game(seed=2)
     game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN)
-    game.start_project("static_website")               # no designer
-    game.start_project("ecommerce_shop")               # wants one
+    commission(game, "static_website")               # no designer
+    commission(game, "ecommerce_shop")               # wants one
     needing = game.projects_needing(Role.DESIGNER)
     assert [p.blueprint_id for p in needing] == ["ecommerce_shop"]
 
@@ -372,7 +372,7 @@ def test_a_project_drops_off_the_list_once_its_posts_are_filled():
     game = Game(seed=2)
     game.hire_worker(Role.DESIGNER, WorkerType.HUMAN)
     game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN)
-    game.start_project("ecommerce_shop")
+    commission(game, "ecommerce_shop")
     project = game.state.active_projects[0]
     assert game.projects_needing(Role.DESIGNER) == [project]
     designer = next(w for w in game.state.workers if w.role is Role.DESIGNER)
@@ -385,7 +385,7 @@ def test_everything_the_menu_offers_is_actually_accepted():
     game = Game(seed=2)
     game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN)
     for blueprint_id in ("static_website", "ecommerce_shop", "mobile_app", "web_app"):
-        game.start_project(blueprint_id)
+        commission(game, blueprint_id)
     for role in Role:
         game.hire_worker(role, WorkerType.HUMAN)
         worker = game.state.workers[-1]

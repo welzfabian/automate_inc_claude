@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import lru_cache
@@ -61,6 +62,10 @@ class ProjectBlueprint:
     base_income: int
     basis_fixed_costs: int
     lifetime: int
+    requires: tuple[str, ...] = ()
+    """Blueprints that must already have been commissioned before this one is
+    offered - the ladder's rungs, held in data exactly like ``Technology.requires``.
+    A client hands over the big job to whoever can show the smaller one."""
 
 
 @dataclass
@@ -169,9 +174,14 @@ class ProjectRegistry:
                 base_income=entry["base_income"],
                 basis_fixed_costs=entry["basis_fixed_costs"],
                 lifetime=entry["lifetime"],
+                requires=tuple(entry.get("requires", [])),
             )
             for entry in raw["projects"]
         }
+        for blueprint in blueprints.values():
+            missing = [r for r in blueprint.requires if r not in blueprints]
+            if missing:
+                raise ValueError(f"Project {blueprint.id!r} requires unknown: {missing}")
         return cls(blueprints)
 
     def all(self) -> list[ProjectBlueprint]:
@@ -179,6 +189,17 @@ class ProjectRegistry:
 
     def get(self, blueprint_id: str) -> ProjectBlueprint | None:
         return self._blueprints.get(blueprint_id)
+
+    def missing_requirements(
+        self, blueprint: ProjectBlueprint, started: Iterable[str]
+    ) -> list[str]:
+        done = set(started)
+        return [r for r in blueprint.requires if r not in done]
+
+    def is_available(self, blueprint: ProjectBlueprint, started: Iterable[str]) -> bool:
+        """Whether this job is on offer: not taken yet, and its references done."""
+        started = set(started)
+        return blueprint.id not in started and not self.missing_requirements(blueprint, started)
 
     def instantiate(self, blueprint_id: str, instance_id: str) -> Project:
         blueprint = self._blueprints[blueprint_id]

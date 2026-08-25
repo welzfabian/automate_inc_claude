@@ -34,23 +34,40 @@ def calculate_income(
     bugs: float,
     visibility_bonus: float,
     *,
+    quality_applies: bool = True,
     aesthetics_applies: bool = True,
 ) -> float:
     """Income per round (PROJECTS_AND_PRODUCTS_SPEC.md 6.1).
 
-    Two deviations from the written formula. ``aesthetics_applies``: a project that
-    never asked for a designer is not punished for having no aesthetics. And
+    Two deviations from the written formula. ``quality_applies`` /
+    ``aesthetics_applies``: a project that never asked for the role holding an
+    attribute is not punished for not having it (BALANCING.md 2) - a static
+    website has no designer, a landing page has no developer. And
     ``service_level``: you are paid for what the client is actually getting right
     now - that is what stops an unstaffed project from being free money.
     """
+    quality_factor = (quality / 100.0) if quality_applies else 1.0
     aesthetics_factor = (aesthetics / 100.0) if aesthetics_applies else 1.0
     return (
         base_income
         * (service_level / 100.0)
-        * (quality / 100.0)
+        * quality_factor
         * aesthetics_factor
         * ((100.0 - bugs) / 100.0)
         * ((100.0 + visibility_bonus) / 100.0)
+    )
+
+
+def attribute_applies(project: Project, attribute: str) -> bool:
+    """Whether this project asked for the role that holds ``attribute``.
+
+    Read off ``ROLE_ATTRIBUTES`` rather than hard-coding the two role names, so
+    that a project without a developer and a project without a designer are the
+    same case - the neutral-attribute rule from BALANCING.md 2 held for aesthetics
+    only until the project ladder added a design-only job.
+    """
+    return any(
+        project.requires(role) for role, held in ROLE_ATTRIBUTES.items() if held == attribute
     )
 
 
@@ -143,7 +160,8 @@ def project_income(
             aesthetics=project.aesthetics,
             bugs=project.bugs,
             visibility_bonus=visibility_bonus_for(project, workers),
-            aesthetics_applies=project.requires(Role.DESIGNER),
+            quality_applies=attribute_applies(project, "quality"),
+            aesthetics_applies=attribute_applies(project, "aesthetics"),
         )
         * modifiers.income_multiplier
         * pressure.income_multiplier

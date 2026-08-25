@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from _helpers import advance
+from _helpers import advance, commission
 from automate_inc.core.game import Game
 from automate_inc.core.state import MAX_LOG_ENTRIES, SAVE_FORMAT_VERSION, GameState
 from automate_inc.core.workers import Role, WorkerType
@@ -14,7 +14,7 @@ def played_game(seed=11) -> Game:
     game = Game(seed=seed)
     game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN)
     game.hire_worker(Role.DESIGNER, WorkerType.AGENT)
-    game.start_project("ecommerce_shop")
+    commission(game, "ecommerce_shop")
     project_id = game.state.active_projects[0].id
     for worker in game.state.workers:
         game.assign_worker(worker.id, project_id)
@@ -85,7 +85,7 @@ def researched_game(seed=12) -> Game:
     game.research("ai_intelligence_2")
     game.research("token_optimization")
     game.hire_worker(Role.DEVELOPER, WorkerType.AGENT, level=2)
-    game.start_project("static_website")
+    commission(game, "static_website")
     project_id = game.state.active_projects[0].id
     game.assign_worker(game.state.workers[0].id, project_id)
     advance(game)
@@ -113,7 +113,7 @@ def test_agent_level_and_staleness_counter_survive_the_round_trip():
     assert restored.workers[0].rounds_in_assignment == original.workers[0].rounds_in_assignment
 
 
-@pytest.mark.parametrize("old_version", [1, 2, 3, 4, 5])
+@pytest.mark.parametrize("old_version", [1, 2, 3, 4, 5, 6])
 def test_saves_from_older_formats_are_rejected(old_version):
     """Each version lost a field the next one has. No migration path on purpose."""
     data = researched_game().state.to_dict()
@@ -122,8 +122,16 @@ def test_saves_from_older_formats_are_rejected(old_version):
         GameState.from_dict(data)
 
 
-def test_the_current_save_format_is_version_six():
-    assert SAVE_FORMAT_VERSION == 6
+def test_the_current_save_format_is_version_seven():
+    assert SAVE_FORMAT_VERSION == 7
+
+
+def test_the_commissioned_catalogue_survives_the_round_trip():
+    """Without it, loading a save would put every finished job back on offer."""
+    original = researched_game().state
+    restored = GameState.from_dict(json.loads(json.dumps(original.to_dict())))
+    assert restored.started_projects == original.started_projects
+    assert restored.started_projects
 
 
 def test_project_service_level_survives_the_round_trip():
