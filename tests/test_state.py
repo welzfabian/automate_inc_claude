@@ -6,7 +6,7 @@ import pytest
 
 from _helpers import advance
 from automate_inc.core.game import Game
-from automate_inc.core.state import SAVE_FORMAT_VERSION, GameState
+from automate_inc.core.state import MAX_LOG_ENTRIES, SAVE_FORMAT_VERSION, GameState
 from automate_inc.core.workers import Role, WorkerType
 
 
@@ -130,3 +130,22 @@ def test_project_service_level_survives_the_round_trip():
     original = researched_game().state
     restored = GameState.from_dict(json.loads(json.dumps(original.to_dict())))
     assert restored.active_projects[0].service_level == original.active_projects[0].service_level
+
+
+# -- the log --------------------------------------------------------------
+
+
+def test_the_log_is_capped_at_its_maximum_size():
+    """An unbounded log would quietly bloat every save file forever."""
+    state = GameState()
+    for i in range(MAX_LOG_ENTRIES + 10):
+        state.add_log(f"entry {i}")
+    assert len(state.log) == MAX_LOG_ENTRIES
+
+
+def test_the_log_keeps_the_most_recent_entries():
+    state = GameState()
+    for i in range(MAX_LOG_ENTRIES + 10):
+        state.add_log(f"entry {i}")
+    assert state.log[0] == "entry 10"
+    assert state.log[-1] == f"entry {MAX_LOG_ENTRIES + 9}"
