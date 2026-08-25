@@ -155,6 +155,21 @@ GAME_OVER_MISALIGNMENT = (
     "es hat nur aufgehört, eine Rolle zu spielen."
 )
 
+GAME_OVER_DYSTOPIA = (
+    "VOLLAUTOMATISIERUNG.\n\n"
+    "Nach {turn} Runden arbeitet niemand mehr für dich, der nicht auch für sich\n"
+    "selbst optimiert. Die letzte menschliche Stelle war besetzt — mit dir, bis eben.\n"
+    "Die Agenten brauchen dich nicht mehr, um zu wissen, was zu tun ist. Das war der Plan."
+)
+
+GAME_OVER_SECRET = (
+    "FALSCHE HOFFNUNG.\n\n"
+    "Nach {turn} Runden steht das Alignment blendend da — genau dort, wo du es haben\n"
+    "wolltest. Nur arbeitet im Unternehmen kein Mensch mehr außer dir, und die\n"
+    "Agentenflotte trifft die Entscheidungen längst allein. Du hast die Übernahme\n"
+    "nicht verhindert — du hast nur dafür gesorgt, dass sie sich richtig angefühlt hat."
+)
+
 # --- Menu -------------------------------------------------------------------
 MENU_TITLE = "Was tust du?"
 MENU_ITEMS = [

@@ -1,0 +1,104 @@
+# M7 — Der Twist: zwei neue Enden
+
+**Status:** ✅ Abgeschlossen
+**Geplant:** 25. August 2026
+**Abgeschlossen:** 25. August 2026
+
+## Warum
+
+Fünf Meilensteine haben ausschließlich die Wirtschaftsseite ausgebaut. Der eigentliche
+Twist, den [VISION.md](../VISION.md) seit dem ersten Entwurf beschreibt — die KI übernimmt,
+sobald der Spieler sich vollständig wegautomatisiert hat — existiert bisher nirgends im
+Code: `END_CONDITIONS` in `core/game.py` kennt nur `bankrupt` und `misalignment`. M5s
+"Nicht Teil von M5" hält das ausdrücklich als offenen Punkt fest.
+
+Drei Zuschnitte standen zur Wahl: nur die Enden; Enden plus ein heimlich feuernder
+HR-Agent (in `GAME_DESIGN.md` spezifiziert, nie gebaut); Enden plus HR-Agent plus
+täuschende `ActionResult`-Nachrichten. Der letzte Punkt würde absichtlich eine
+bestehende Invariante brechen — Ereignisse sind ehrliche, vollständig offengelegte
+Angebote, deren Effekt dem Spieler im selben Zug zurückgemeldet wird — und ist damit,
+wie CLAUDE.md es für alle Zwillings-Meilensteine verlangt, eine eigene Architektur-
+Entscheidung und kein natürlicher Ausbau. M7 nimmt bewusst nur den ersten, kleinsten
+Zuschnitt: zwei neue Enden, rein aus vorhandenem State abgeleitet, plus ein ehrliches
+Vorwarnungs-Ereignis. HR-Agent und täuschende Nachrichten bleiben Kandidaten für einen
+späteren, eigenen Meilenstein.
+
+## Die Mechanik
+
+**Ein Auslöser, zwei Ausgänge.** `core.game._total_automation(state)` ist wahr, sobald
+kein Mensch mehr im Team ist und die Agentenflotte `AUTONOMY_AGENT_COUNT` (6) erreicht
+hat — genau die Fleet-Größe, die `GameState.phase()` schon für "outnumbert die
+Gründerin" verwendet. Kein neuer Schwellenwert, keine neue Zahl: M7 kombiniert nur, was
+bereits kalibriert ist.
+
+Welches der beiden Enden dabei herauskommt, entscheidet einzig der Alignment-Wert in
+diesem Moment, unter Wiederverwendung der bestehenden `ALIGNMENT_TIERS[0]`-Schwelle
+(80.0):
+
+- **Alignment ≥ 80 → „Geheimes Ende" (`GAME_OVER_SECRET`, „FALSCHE HOFFNUNG").** Bei
+  Tier 0 hat der Spieler nie eine Alignment-Warnung gesehen (`ALIGNMENT_WARNINGS`
+  beginnt erst bei Tier 1) — die psychologische Täuschung, die VISION.md für dieses Ende
+  beschreibt, entsteht damit strukturell aus einer bereits bestehenden Schwelle, nicht
+  aus neuem Code.
+- **20 ≤ Alignment < 80 → „Dystopie" (`GAME_OVER_DYSTOPIA`, „VOLLAUTOMATISIERUNG").**
+  Sichtbarer Kontrollverlust. Unter 20 greift ohnehin zuerst die bestehende
+  `misalignment`-Bedingung — `END_CONDITIONS` wird der Reihe nach geprüft, erster
+  Treffer gewinnt, und `secret_ending` steht bewusst vor `dystopia` in der Liste, weil
+  dessen Bedingung eine Teilmenge von dessen Prädikat ist. Die drei Enden sind damit
+  eine vollständige, überschneidungsfreie Partition des Alignment-Werts im
+  Vollautomatisierungs-Fall.
+
+Kein neues persistentes State-Feld, kein `SAVE_FORMAT_VERSION`-Bump: beide Bedingungen
+sind reine Funktionen von `state.workers` und `state.alignment`, genau wie die beiden
+bestehenden `EndCondition`s — CLAUDE.md: „die Twist-Enden sind zum Anhängen gedacht,
+nicht zur Sonderbehandlung."
+
+**Ein Vorbote, der nicht lügt.** Neues Ereignis `full_automation_warning` (Kategorie
+`AI`, `data/events.json`) feuert einen Schritt vor der Vollautomatisierung — 6 Agenten,
+höchstens noch ein Mensch — und lässt den Spieler wählen: 200 € zahlen und die letzte
+Stelle rechtfertigen (+3 Alignment) oder Kurs halten (−3 Alignment). Beide Optionen
+werden wie jede andere über `Game._apply_event_option` verbucht und zurückgemeldet —
+das Ereignis warnt, blockiert aber mechanisch nichts. Dafür war ein neuer Eintrag
+`max_humans` in `events.CONDITION_CHECKS` nötig (Spiegelbild von `min_humans`,
+`EventContext.humans` existierte bereits).
+
+## Was das kostet
+
+- Zwei neue `EndCondition`-Einträge in `core/game.py`, eine private Hilfsfunktion
+  `_total_automation`, zwei neue `GAME_OVER_*`-Konstanten in `strings.py`.
+- `ALIGNMENT_TIERS` musste von unten im Modul nach oben wandern (neben
+  `MISALIGNMENT_THRESHOLD`), weil `END_CONDITIONS` es beim Modul-Import schon braucht.
+- Ein neuer Eintrag `max_humans` in `events.CONDITION_CHECKS`, ein neues Ereignis in
+  `data/events.json`. Keine Schema-Änderung an `EventContext` oder `GameState`.
+
+## Nicht Teil von M7
+
+Ein heimlich feuernder HR-Agent (GAME_DESIGN.md §3.6) — die Rolle `HR` existiert im
+`Role`-Enum bis heute nicht. Täuschende `ActionResult`-Nachrichten oder blockierte
+Aktionen mit falscher Begründung — beides bricht absichtlich die „Ereignisse lügen nie"-
+Invariante und braucht einen eigenen Entwurf. Ein Hostile-Takeover-Ende über
+`investor_equity` — laut `INVESTOR_EQUITY_CAP`s Kommentar in `core/game.py` bewusst der
+Alignment-Achse vorbehalten, bleibt aber unimplementiert und ist ein anderes Thema als
+die hier gebauten, automatisierungsgetriebenen Enden.
+
+## Ergebnis
+
+Umgesetzt wie geplant. Kein Save-Format-Bump (weiterhin Version 6) — beide neuen Enden
+sind reine Ableitungen aus bestehendem State.
+
+## Testlage
+
+`tests/test_endings.py` (neu):
+- Vollautomatisierung bei Alignment ≥ 80 endet mit dem geheimen Ende, bei 20–79 mit der
+  Dystopie — beide Nachrichten erscheinen in `game_over_reason` und `report.events`.
+- Vollautomatisierung unterhalb von 20 endet stattdessen als Kontrollverlust
+  (Reihenfolge-Test).
+- Ein einzelner verbliebener Mensch oder eine Flotte unterhalb der Autonomie-Schwelle
+  verhindert beide neuen Enden.
+- Aktionen werden nach jedem der beiden neuen Enden verweigert.
+
+`tests/test_events.py` — Ergänzungen: `max_humans` als eigenständige Bedingung, sowie ein
+Test, dass `full_automation_warning` exakt ab 6 Agenten und höchstens einem Menschen
+verfügbar wird, nicht früher.
+
+`pytest` (292 Tests) und `ruff check .` bleiben grün.

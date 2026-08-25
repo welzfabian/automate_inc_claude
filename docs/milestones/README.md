@@ -12,6 +12,7 @@ Teil davon war.
 | [M3](./M3_SERVICE_LEVEL_AND_MAINTENANCE.md) | Servicegrad und Instandhaltung | ✅ Abgeschlossen | 24. August 2026 |
 | [M4](./M4_EVENTS.md) | Druck von außen: Ereignisse | ✅ Abgeschlossen | 24. August 2026 |
 | [M5](./M5_OFFICE_AND_INVESTORS.md) | Büro-Ausbau und Investoren-Auszahlung | ✅ Abgeschlossen | 25. August 2026 |
+| [M7](./M7_TWIST_ENDINGS.md) | Der Twist: zwei neue Enden | ✅ Abgeschlossen | 25. August 2026 |
 
 ## Offene Punkte ohne eigenen Meilenstein
 

@@ -129,6 +129,30 @@ def test_agents_outnumber_humans_compares_headcounts():
     assert REGISTRY.is_available(event, outnumbered)
 
 
+def test_max_humans_needs_at_or_below_the_threshold():
+    event = Event(
+        id="x", category=EventCategory.AI, name="X", description="",
+        requires={"max_humans": 1}, chance=1.0, once=False, options=(),
+    )
+    assert REGISTRY.is_available(event, NOTHING_UNLOCKED)  # humans defaults to 0
+    staffed = EventContext(**{**vars(NOTHING_UNLOCKED), "humans": 2})
+    assert not REGISTRY.is_available(event, staffed)
+
+
+def test_full_automation_warning_needs_a_full_fleet_and_at_most_one_human():
+    """M7: fires exactly one human away from the total-automation endings."""
+    event = REGISTRY.get("full_automation_warning")
+    assert event is not None
+    almost = EventContext(**{**vars(NOTHING_UNLOCKED), "agents": 5, "humans": 1})
+    assert not REGISTRY.is_available(event, almost)  # not enough agents yet
+    staffed = EventContext(**{**vars(NOTHING_UNLOCKED), "agents": 6, "humans": 2})
+    assert not REGISTRY.is_available(event, staffed)  # too many humans left
+    edge = EventContext(**{**vars(NOTHING_UNLOCKED), "agents": 6, "humans": 1})
+    assert REGISTRY.is_available(event, edge)
+    empty = EventContext(**{**vars(NOTHING_UNLOCKED), "agents": 6, "humans": 0})
+    assert REGISTRY.is_available(event, empty)
+
+
 def test_agents_outnumber_humans_false_does_not_require_the_opposite():
     """``{"agents_outnumber_humans": false}`` is not "humans must not be
     outnumbered" - the check is skipped outright, same as omitting it."""

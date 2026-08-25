@@ -438,3 +438,41 @@ nur die *relative* Wirkung innerhalb derselben Methode ist belastbar.
 eine einzelne Zahlung, damit "immer vertrösten" keine dominante Strategie wird; nicht
 separat gegensimuliert, da der Effekt (mehr Anteile, mehr laufender Abzug) derselben
 selbstbegrenzenden Nettogewinn-Logik unterliegt wie der Startwert.
+
+---
+
+# Meilenstein 7
+
+## 22. Die beiden neuen Enden führen keinen eigenen Schwellenwert ein
+
+`_total_automation` (0 Menschen, Agentenflotte ≥ `AUTONOMY_AGENT_COUNT`) und die Aufteilung
+in "Dystopie" gegen "Geheimes Ende" bei `ALIGNMENT_TIERS[0]` (80.0) verwenden ausschließlich
+Konstanten, die schon vor M7 kalibriert waren: `AUTONOMY_AGENT_COUNT = 6` bestimmt seit M1/M2
+die Autonomie-Phase (`GameState.phase()`), und `ALIGNMENT_TIERS[0]` ist die Schwelle, unter
+der `ALIGNMENT_WARNINGS` überhaupt zum ersten Mal etwas anzeigt. M7 führt deshalb keine neue
+Elf-Seeds-Simulation wie M2–M4 — es gibt keine neue Zahl zu kalibrieren, nur eine neue
+Kombination zweier bestehender. Wie M5 (Eintrag 20) für seine beiden optionalen Mechaniken
+begründet: Ein Abgleich gegen die bereits belegten Größenordnungen genügt, wenn der Eingriff
+selbst keine neuen Parameter mitbringt.
+
+**Worauf das Ergebnis empfindlich reagiert und worauf nicht:** Da `_total_automation`
+`AUTONOMY_AGENT_COUNT` unverändert wiederverwendet, tritt eines der beiden neuen Enden nie
+früher ein als die Autonomie-Phase selbst schon erreichbar ist (siehe M2s Simulation:
+Runde 7–10 für Stufe 2, 17–23 für Stufe 3) — ein Vollautomatisierungs-Ende vor Runde ~7 ist
+mit der aktuellen Fleet-Ökonomie nicht erreichbar. Die Aufteilung bei Alignment 80 ist streng
+deterministisch (kein RNG, BALANCING.md 8) und bewusst *nicht* symmetrisch gewählt: Da Level-2-
+Agenten schon −1/Runde und Level-3-Agenten −3/Runde kosten (Nr. 7), braucht eine Sechs-Agenten-
+Flotte aktives Gegensteuern (Menschen, `ai_alignment`-Forschung, das neue
+`full_automation_warning`), um überhaupt bei ≥ 80 anzukommen — das "Geheime Ende" ist damit die
+seltenere, nicht die leichtere der beiden Varianten.
+
+## 23. `full_automation_warning` bleibt ein ehrliches Angebot, keine Blockade
+
+Die Vorwarnung (6 Agenten, höchstens 1 Mensch) kostet in der teureren Option 200 € für
++3 Alignment, in der billigeren −3 Alignment für nichts — bewusst kleiner dimensioniert als
+`ai_ethics_debate` (300 € / ±5, Nr. siehe `data/events.json`), weil das Ereignis nur einmal pro
+Partie feuern kann (`once: true`) und rein als Vorbote gedacht ist, nicht als Stellschraube.
+Keine der beiden Optionen verändert Personal oder verhindert die Enden — wer danach trotzdem
+den letzten Menschen feuert, bekommt eines der beiden neuen Enden wie vorgesehen. Nicht separat
+simuliert: Der Effekt ist zu klein, um die Alignment-Schwelle 80 in der Praxis zu verschieben
+(±3 gegen einen laufenden Verfall von −1 bis −3/Runde bei sechs Agenten).

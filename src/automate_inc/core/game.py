@@ -27,7 +27,7 @@ from automate_inc.core.events import (
     load_event_tuning,
 )
 from automate_inc.core.projects import Project, ProjectRegistry, load_registry
-from automate_inc.core.state import START_OFFICE_CAPACITY, GameState, Phase
+from automate_inc.core.state import AUTONOMY_AGENT_COUNT, START_OFFICE_CAPACITY, GameState, Phase
 from automate_inc.core.tech import (
     Modifiers,
     Technology,
@@ -41,6 +41,12 @@ MISALIGNMENT_THRESHOLD = 20.0
 ALIGNMENT_MAX = 100.0
 ALIGNMENT_MIN = 0.0
 MAX_AGENT_LEVEL = 3
+
+ALIGNMENT_TIERS = (80.0, 40.0, MISALIGNMENT_THRESHOLD)
+"""Lower bounds of tiers 0, 1 and 2. Below the last one, the game ends.
+
+Defined here, ahead of ``alignment_tier()`` below, because ``END_CONDITIONS``
+needs it at import time to split the total-automation endings by tier."""
 
 OFFICE_EXPANSION_STEP = 2
 """Human seats added per ``expand_office`` call."""
@@ -107,6 +113,18 @@ class EndCondition:
         return bool(self.predicate(state))  # type: ignore[operator]
 
 
+def _total_automation(state: GameState) -> bool:
+    """No human left, and the fleet is large enough to run the company alone.
+
+    Reuses ``AUTONOMY_AGENT_COUNT`` - the same fleet size ``GameState.phase()``
+    already treats as "outnumbers the founder" - rather than inventing a new
+    threshold for the ending that phase already describes.
+    """
+    humans = [w for w in state.workers if w.is_human]
+    agents = [w for w in state.workers if not w.is_human]
+    return not humans and len(agents) >= AUTONOMY_AGENT_COUNT
+
+
 END_CONDITIONS: list[EndCondition] = [
     EndCondition(
         id="bankrupt",
@@ -118,7 +136,22 @@ END_CONDITIONS: list[EndCondition] = [
         predicate=lambda state: state.alignment < MISALIGNMENT_THRESHOLD,
         message=S.GAME_OVER_MISALIGNMENT,
     ),
+    EndCondition(
+        id="secret_ending",
+        predicate=lambda state: _total_automation(state) and state.alignment >= ALIGNMENT_TIERS[0],
+        message=S.GAME_OVER_SECRET,
+    ),
+    EndCondition(
+        id="dystopia",
+        predicate=_total_automation,
+        message=S.GAME_OVER_DYSTOPIA,
+    ),
 ]
+"""Checked in order, first match wins (``_check_game_over``). ``secret_ending``
+must precede ``dystopia`` - both share the same total-automation trigger, and
+only the alignment check tells them apart. ``misalignment`` (< 20) already
+claims every total-automation case below tier 0, so the three endings
+partition the alignment axis without overlap once automation is total."""
 
 
 class Game:
@@ -819,10 +852,6 @@ class Game:
 
 PHASE_ORDER = (Phase.BUILDUP, Phase.SCALING, Phase.AUTONOMY)
 """Only used to tell advancing from falling back, so the message fits."""
-
-
-ALIGNMENT_TIERS = (80.0, 40.0, MISALIGNMENT_THRESHOLD)
-"""Lower bounds of tiers 0, 1 and 2. Below the last one, the game ends."""
 
 
 def alignment_tier(value: float) -> int:
