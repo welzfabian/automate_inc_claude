@@ -209,6 +209,25 @@ def test_dangling_after_event_reference_is_rejected_at_load():
         )
 
 
+def test_a_non_positive_duration_is_rejected_at_load():
+    with pytest.raises(ValueError, match="non-positive duration"):
+        EventRegistry.from_json(
+            json.dumps(
+                {
+                    "events": [
+                        {
+                            "id": "x", "category": "MARKET", "name": "X", "description": "",
+                            "requires": {}, "chance": 1.0,
+                            "options": [
+                                {"id": "o", "label": "O", "effects": {}, "duration": 0}
+                            ],
+                        }
+                    ]
+                }
+            )
+        )
+
+
 # -- Pressure: the Modifiers equivalent for running effects -------------------
 
 
