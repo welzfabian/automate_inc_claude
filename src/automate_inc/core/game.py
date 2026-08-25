@@ -27,7 +27,7 @@ from automate_inc.core.events import (
     load_event_tuning,
 )
 from automate_inc.core.projects import Project, ProjectRegistry, load_registry
-from automate_inc.core.state import START_OFFICE_CAPACITY, GameState, Phase
+from automate_inc.core.state import AUTONOMY_AGENT_COUNT, START_OFFICE_CAPACITY, GameState, Phase
 from automate_inc.core.tech import (
     Modifiers,
     Technology,
@@ -41,6 +41,12 @@ MISALIGNMENT_THRESHOLD = 20.0
 ALIGNMENT_MAX = 100.0
 ALIGNMENT_MIN = 0.0
 MAX_AGENT_LEVEL = 3
+
+ALIGNMENT_TIERS = (80.0, 40.0, MISALIGNMENT_THRESHOLD)
+"""Lower bounds of tiers 0, 1 and 2. Below the last one, the game ends.
+
+Defined here, ahead of ``alignment_tier()`` below, because ``END_CONDITIONS``
+needs it at import time to split the total-automation endings by tier."""
 
 OFFICE_EXPANSION_STEP = 2
 """Human seats added per ``expand_office`` call."""
@@ -107,6 +113,31 @@ class EndCondition:
         return bool(self.predicate(state))  # type: ignore[operator]
 
 
+AUTONOMOUS_AGENT_LEVEL = 2
+"""The lowest level that counts towards replacing the company.
+
+Level 1 agents are the harmless tier by design - no side effects, no alignment
+cost - so a fleet of them is a cheap workforce, not an autonomy story. Counting
+them let six of them plus a fired founder end the game on turn 0, at alignment
+100, on the ending meant to be the rare one (BALANCING.md 22)."""
+
+
+def _total_automation(state: GameState) -> bool:
+    """No human left, and enough autonomous agents to run the company alone.
+
+    Fleet size reuses ``AUTONOMY_AGENT_COUNT`` - what ``GameState.phase()``
+    already treats as "outnumbers the founder" - but only agents at
+    ``AUTONOMOUS_AGENT_LEVEL`` or above count towards it. The phase threshold
+    describes having scaled, which is legitimately cheap and early; the ending
+    needs the stronger claim that the fleet actually replaced people.
+    """
+    humans = [w for w in state.workers if w.is_human]
+    autonomous = [
+        w for w in state.workers if not w.is_human and w.level >= AUTONOMOUS_AGENT_LEVEL
+    ]
+    return not humans and len(autonomous) >= AUTONOMY_AGENT_COUNT
+
+
 END_CONDITIONS: list[EndCondition] = [
     EndCondition(
         id="bankrupt",
@@ -118,7 +149,22 @@ END_CONDITIONS: list[EndCondition] = [
         predicate=lambda state: state.alignment < MISALIGNMENT_THRESHOLD,
         message=S.GAME_OVER_MISALIGNMENT,
     ),
+    EndCondition(
+        id="secret_ending",
+        predicate=lambda state: _total_automation(state) and state.alignment >= ALIGNMENT_TIERS[0],
+        message=S.GAME_OVER_SECRET,
+    ),
+    EndCondition(
+        id="dystopia",
+        predicate=_total_automation,
+        message=S.GAME_OVER_DYSTOPIA,
+    ),
 ]
+"""Checked in order, first match wins (``_check_game_over``). ``secret_ending``
+must precede ``dystopia`` - both share the same total-automation trigger, and
+only the alignment check tells them apart. ``misalignment`` (< 20) already
+claims every total-automation case below tier 0, so the three endings
+partition the alignment axis without overlap once automation is total."""
 
 
 class Game:
@@ -288,7 +334,7 @@ class Game:
         blueprint = self.registry.get(blueprint_id)
         if blueprint is None:
             return ActionResult.failure(S.ERR_UNKNOWN_BLUEPRINT)
-        if not any(w.effective_level >= 2 for w in self.state.workers):
+        if not any(w.is_senior for w in self.state.workers):
             return ActionResult.failure(S.ERR_NO_SENIOR_WORKER)
         project = self.registry.instantiate(blueprint_id, self._next_id("p"))
         self.state.active_projects.append(project)
@@ -536,7 +582,7 @@ class Game:
         modifiers = self.modifiers
         pressure = self.pressure
 
-        self._advance_service_level()
+        self._advance_service_level(report)
         self._apply_worker_effects(modifiers)
         self._apply_side_effects(report, rng, modifiers)
         self._update_alignment(report, modifiers, pressure)
@@ -588,12 +634,20 @@ class Game:
                 )
                 project.adjust(attribute, delta)
 
-    def _advance_service_level(self) -> None:
-        """A project earns only what the client is actually getting."""
+    def _advance_service_level(self, report: TurnReport) -> None:
+        """A project earns only what the client is actually getting.
+
+        A project sliding back is the one case the player cannot read off the
+        team panel, so it says why - abandoned, or left to agents who own
+        nothing (``workers.SENIOR_LEVEL``).
+        """
         for project in self.state.active_projects:
-            project.adjust(
-                "service_level", economy.service_level_delta(project, self.state.workers)
-            )
+            delta = economy.service_level_delta(project, self.state.workers)
+            if delta < 0 and project.service_level > 0:
+                assigned = self.state.workers_on(project.id)
+                template = S.PROJECT_UNSUPERVISED if assigned else S.PROJECT_NEGLECTED
+                report.events.append(template.format(name=project.name))
+            project.adjust("service_level", delta)
 
     def _apply_side_effects(
         self, report: TurnReport, rng: random.Random, modifiers: Modifiers
@@ -819,10 +873,6 @@ class Game:
 
 PHASE_ORDER = (Phase.BUILDUP, Phase.SCALING, Phase.AUTONOMY)
 """Only used to tell advancing from falling back, so the message fits."""
-
-
-ALIGNMENT_TIERS = (80.0, 40.0, MISALIGNMENT_THRESHOLD)
-"""Lower bounds of tiers 0, 1 and 2. Below the last one, the game ends."""
 
 
 def alignment_tier(value: float) -> int:

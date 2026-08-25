@@ -438,3 +438,124 @@ nur die *relative* Wirkung innerhalb derselben Methode ist belastbar.
 eine einzelne Zahlung, damit "immer vertrösten" keine dominante Strategie wird; nicht
 separat gegensimuliert, da der Effekt (mehr Anteile, mehr laufender Abzug) derselben
 selbstbegrenzenden Nettogewinn-Logik unterliegt wie der Startwert.
+
+---
+
+# Meilenstein 7
+
+## 22. Die Vollautomatisierungs-Enden hängen an der Stufe, nicht an der Kopfzahl
+
+**Der Fehler:** Die erste Fassung von `_total_automation` verlangte „0 Menschen und
+≥ `AUTONOMY_AGENT_COUNT` Agenten" — ohne Rücksicht auf deren Stufe. Begründet wurde das mit
+einer Regel, die in diesem Fall nicht trägt: Beide verwendeten Konstanten
+(`AUTONOMY_AGENT_COUNT = 6`, `ALIGNMENT_TIERS[0] = 80`) waren bereits kalibriert, also
+schien es nichts Neues zu kalibrieren zu geben. Übernommen wurde aber nur die *Zahl*, nicht
+ihre *Aussage*: `AUTONOMY_AGENT_COUNT` beschreibt in `GameState.phase()` eine Phase („du hast
+skaliert"), und skalieren ist absichtlich früh und billig möglich. Es beschreibt nicht „die
+KI hat dich ersetzt".
+
+**Was die Simulation zeigte** (Skript nicht Teil der Suite, elf Seeds):
+
+- **Runde 0, jeder Seed.** Sechs Level-1-Agenten kosten rund 255 € von 1.000 € Startkapital
+  und **keinerlei Forschung**. Wer sie einstellt und den Startmenschen feuert, bekommt auf
+  Runde 0 „FALSCHE HOFFNUNG. Nach **0** Runden…" — das Ende, das laut
+  [VISION.md](./VISION.md) das seltene sein soll, als Eröffnungszug.
+- **Das Dystopie-Ende feuerte in keinem einzigen Lauf.** Jeder simulierte Lauf, der
+  Vollautomatisierung erreichte (bei normalem Spiel Runde 12–18), tat das bei Alignment
+  **100,0** → immer das geheime Ende. Der Grund ist strukturell und kein Zufall der Politik:
+  Level-1-Agenten haben per Design null Alignment-Verfall (Nr. 7) — „0 Menschen + billige
+  Flotte" fällt deshalb *immer* mit hohem Alignment zusammen. Die als „überschneidungsfreie
+  Partition" beschriebene Aufteilung war praktisch ein einziger Zweig.
+
+**Auflösung:** `AUTONOMOUS_AGENT_LEVEL = 2` — nur Agenten ab Stufe 2 zählen auf die
+Flottengröße ein. Das trifft genau die Stelle, an der VISION.md die Harmlosigkeit endet
+(Stufe 1: keine Nebeneffekte, kein Alignment-Preis; ab Stufe 2 beides). Runde 0 ist damit
+tot, weil Stufe 2 `ai_intelligence_2` (30 RP) voraussetzt, und der naive
+„alles-automatisieren"-Lauf endet jetzt in Runde 3–6 im Bankrott statt im Twist.
+
+**Was das für die Aufteilung bedeutet** (deterministisch, daher ohne Seeds belastbar — sechs
+Level-2-Agenten, kein Mensch, Verfall −6/Runde bzw. −3 mit `ai_alignment`):
+
+| | Runden im Fenster ≥ 80 (geheim) | Runden im Fenster 20–79 (Dystopie) |
+|---|---|---|
+| ohne `ai_alignment` | 3 | 10 |
+| mit `ai_alignment` | 6 | 20 |
+
+Beide Enden sind damit erreichbar, Dystopie ist der Normalfall und das geheime Ende das
+schmale Fenster — und es bedeutet endlich etwas: Es geht an den Spieler, der *so schnell*
+automatisiert, dass das Alignment noch nicht nachgezogen hat. Das ist genau die „falsche
+Hoffnung", die VISION.md beschreibt, und es fällt mit deren Ironie zusammen („je besser der
+Spieler automatisiert, desto schneller kommt der Twist").
+
+**Nicht behauptet:** Die verwendeten Simulationspolitiken spielen schwach — die meisten Läufe
+enden im Bankrott, und ein Start mit vier Menschen ist wegen des Bürodeckels aus M5 gar nicht
+finanzierbar. Über die *Häufigkeit* der beiden Enden in einer real gespielten Partie sagt
+diese Simulation deshalb nichts; belastbar sind nur die drei strukturellen Befunde oben
+(Runde-0-Erreichbarkeit, das an 100 festgenagelte Alignment einer Level-1-Flotte, und die
+deterministischen Fenster in der Tabelle).
+
+**Die Lehre für künftige Meilensteine:** Eine bereits kalibrierte Konstante wiederzuverwenden
+ist *kein* Ersatz für eine Simulation. Was kalibriert war, ist die Zahl in ihrem
+ursprünglichen Kontext — hier eine Phasengrenze. Sobald sie eine andere Frage beantworten
+soll, ist sie eine neue Zahl.
+
+## 23. `full_automation_warning` bleibt ein ehrliches Angebot, keine Blockade
+
+Die Vorwarnung kostet in der teureren Option 200 € für +3 Alignment, in der billigeren
+−3 Alignment für nichts — bewusst kleiner dimensioniert als `ai_ethics_debate` (300 € / ±5),
+weil das Ereignis nur einmal pro Partie feuern kann (`once: true`) und rein als Vorbote
+gedacht ist, nicht als Stellschraube. Keine der beiden Optionen verändert Personal oder
+verhindert die Enden.
+
+**Offen:** Die Bedingung (`min_agents: 6, max_humans: 1`) zählt weiterhin Agenten *jeder*
+Stufe, im Gegensatz zum Ende selbst nach Nr. 22. Das ist bewusst so gelassen — als Warnung
+darf das Ereignis früher und großzügiger greifen als das Ende, vor dem es warnt; eine Flotte
+aus sechs Level-1-Agenten neben dem letzten Menschen ist genau die Lage, in der die Frage
+„wofür wirst du noch gebraucht?" sitzt, auch wenn sie noch kein Spielende auslöst. Sollte
+sich das im Spiel als zu geschwätzig erweisen, ist es ein Zahlenwechsel in
+`data/events.json`, keine Code-Änderung.
+
+## 24. „Ohne erfahrenen Worker läuft kein Projekt" galt nur beim Starten
+
+**Der Fehler:** `Game.start_project` verlangt seit M1 mindestens einen Worker ab
+`SENIOR_LEVEL` (Menschen zählen über `effective_level` immer dazu), und die Fehlermeldung
+formuliert das als Dauerzustand: „Agenten der Stufe 1 arbeiten zuverlässig — aber niemand
+von ihnen übernimmt Verantwortung." Durchgesetzt wurde die Regel aber nur in diesem einen
+Moment. Danach war der Weg offen: Projekt mit einem Menschen starten, den Menschen feuern,
+zwei Level-1-Agenten daraufsetzen — Servicegrad klettert auf 100, Qualität auf 100, volles
+Einkommen dauerhaft. Kein Test deckte den Fall ab; alle 294 Tests blieben grün, als die
+Lücke gefunden wurde.
+
+Das ist dieselbe Verwechslung wie in Nr. 22, nur eine Ebene tiefer: Eine Bedingung wurde
+an einem Zeitpunkt geprüft, obwohl sie eine Eigenschaft beschreibt.
+
+**Auflösung:** `economy.service_level_delta` prüft jetzt nicht mehr „ist überhaupt jemand
+zugewiesen", sondern „ist jemand *Verantwortlicher* zugewiesen" (`Worker.is_senior`). Beide
+Fälle — verlassenes Projekt und ein Projekt in den Händen von Level-1-Agenten — laufen damit
+in denselben Verfall mit `service_level_neglect_rate`. Bewusst ein Gefälle und keine Klippe:
+Das ist die Linie, die M3 mit dem Servicegrad eingeführt hat (Nr. 11–12), und der Spieler
+sieht die Zahl fallen, statt vor eine blockierte Aktion zu laufen.
+
+**Gemessene Wirkung** (ecommerce_shop, acht Runden, Ereignisse aus):
+
+| Besetzung | Servicegrad | Einkommen |
+|---|---|---|
+| 2 Menschen | 100,0 | 208,0 |
+| 1 Mensch + 1 Level-1-Agent | 100,0 | 208,0 |
+| 1 Level-2-Agent + 1 Level-1-Agent | 100,0 | 208,0 |
+| 2 Level-2-Agenten | 100,0 | 197,6 |
+| **2 Level-1-Agenten** | **0,0** | **0,0** |
+
+Die Regel greift also ausschließlich bei der *reinen* Level-1-Besetzung — ein einziger
+Verantwortlicher im Team genügt. Level-1-Agenten bleiben damit das, was sie sein sollen:
+billige, zuverlässige Zuarbeit, die nur niemanden ersetzt.
+`test_full_staffing_beats_every_partial_staffing` bleibt über alle vier Projekttypen grün.
+
+**Warum das zu M7 gehört:** Es ist genau der Weg, den der in Nr. 22 beschriebene Exploit
+genommen hat — Projekt mit dem Startmenschen anlegen, Menschen feuern, Level-1-Flotte
+weiterlaufen lassen. Nr. 22 nimmt dieser Flotte das Spielende, Nr. 24 nimmt ihr die
+Einnahmen. Beide zusammen sagen dasselbe: Stufe 1 automatisiert niemanden weg.
+
+**Neu im Rundenbericht:** `PROJECT_NEGLECTED` bzw. `PROJECT_UNSUPERVISED` — ein fallender
+Servicegrad ist das Einzige, was der Spieler nicht am Team-Panel ablesen kann, und stand
+bisher (auch beim verlassenen Projekt) unkommentiert in der Bilanz.

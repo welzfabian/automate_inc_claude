@@ -183,6 +183,10 @@ def _cond_min_humans(ctx: EventContext, value: float) -> bool:
     return ctx.humans >= value
 
 
+def _cond_max_humans(ctx: EventContext, value: float) -> bool:
+    return ctx.humans <= value
+
+
 def _cond_agents_outnumber_humans(ctx: EventContext, value: bool) -> bool:
     return (ctx.agents > ctx.humans) if value else True
 
@@ -232,6 +236,7 @@ CONDITION_CHECKS = {
     "every_n_turns": _cond_every_n_turns,
     "min_agents": _cond_min_agents,
     "min_humans": _cond_min_humans,
+    "max_humans": _cond_max_humans,
     "agents_outnumber_humans": _cond_agents_outnumber_humans,
     "min_agent_level": _cond_min_agent_level,
     "min_projects": _cond_min_projects,

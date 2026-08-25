@@ -74,6 +74,58 @@ def test_an_abandoned_project_earns_nothing():
     assert economy.project_income(project, game.state.workers) == 0.0
 
 
+def test_a_project_left_to_level_one_agents_slides_back():
+    """``start_project`` has always demanded a senior worker; without the same
+    test every round, the founder could start a project, hand it to agents who
+    own nothing and collect full income forever (BALANCING.md 24)."""
+    game = project_game(staffing={Role.DEVELOPER: 1, Role.DESIGNER: 1})
+    play(game, 4)
+    project = game.state.active_projects[0]
+    assert project.at_full_service
+    for worker in list(game.state.workers):
+        assert game.fire_worker(worker.id).ok
+    for role in (Role.DEVELOPER, Role.DESIGNER):
+        assert game.hire_worker(role, WorkerType.AGENT, 1).ok
+        assert game.assign_worker(game.state.workers[-1].id, project.id).ok
+    play(game, 3)
+    assert project.service_level < 100.0
+
+
+def test_a_senior_agent_holds_the_service_level_where_a_level_one_agent_cannot():
+    """The same fleet at level 2 keeps the project up - the rule is about who
+    is answerable, not about agents as such."""
+    outcomes = {}
+    for level in (1, 2):
+        game = project_game(staffing={Role.DEVELOPER: 1, Role.DESIGNER: 1})
+        game.state.research = 500
+        assert game.research("ai_intelligence_2").ok
+        play(game, 4)
+        project = game.state.active_projects[0]
+        for worker in list(game.state.workers):
+            assert game.fire_worker(worker.id).ok
+        for role in (Role.DEVELOPER, Role.DESIGNER):
+            assert game.hire_worker(role, WorkerType.AGENT, level).ok
+            assert game.assign_worker(game.state.workers[-1].id, project.id).ok
+        play(game, 3)
+        outcomes[level] = project.service_level
+    assert outcomes[1] < outcomes[2] == 100.0
+
+
+def test_an_unsupervised_project_says_so_in_the_report():
+    """Nothing may reach the balance sheet unexplained - and a sliding service
+    level is the one thing the team panel does not show."""
+    game = project_game(staffing={Role.DEVELOPER: 1, Role.DESIGNER: 1})
+    play(game, 4)
+    project = game.state.active_projects[0]
+    for worker in list(game.state.workers):
+        assert game.fire_worker(worker.id).ok
+    assert game.hire_worker(Role.DEVELOPER, WorkerType.AGENT, 1).ok
+    assert game.assign_worker(game.state.workers[-1].id, project.id).ok
+    game.state.money = 100_000.0
+    report = advance(game)
+    assert any("ohne erfahrenen Worker" in line for line in report.events)
+
+
 def test_abandoning_a_finished_project_undoes_it():
     game = project_game(staffing={Role.DEVELOPER: 1, Role.DESIGNER: 1})
     play(game, 4)

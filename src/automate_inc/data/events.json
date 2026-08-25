@@ -92,6 +92,27 @@
       ]
     },
     {
+      "id": "full_automation_warning",
+      "category": "AI",
+      "name": "Der letzte Schreibtisch",
+      "description": "Nur noch eine menschliche Stelle ist besetzt. Die Agentenflotte könnte den Betrieb allein tragen - ein Berater fragt unverblümt, wofür du noch gebraucht wirst.",
+      "requires": { "min_agents": 6, "max_humans": 1 },
+      "chance": 0.2,
+      "once": true,
+      "options": [
+        {
+          "id": "reassure",
+          "label": "Beratungshonorar zahlen und zurückrudern (200 €)",
+          "effects": { "money": -200, "alignment": 3 }
+        },
+        {
+          "id": "shrug",
+          "label": "Kurs halten",
+          "effects": { "alignment": -3 }
+        }
+      ]
+    },
+    {
       "id": "recession",
       "category": "MARKET",
       "name": "Rezession",

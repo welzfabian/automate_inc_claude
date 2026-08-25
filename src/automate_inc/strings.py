@@ -93,6 +93,11 @@ TOKENS_AUTO_BOUGHT = (
     "{amount:.0f} ♦ automatisch nachgekauft für {cost:.2f} € — der Betrieb lief weiter."
 )
 PROJECT_EXPIRED = "Projekt „{name}“ ist ausgelaufen. Der Kunde bedankt sich nicht."
+PROJECT_NEGLECTED = "Projekt „{name}“ ist unbesetzt. Der Servicegrad sinkt."
+PROJECT_UNSUPERVISED = (
+    "Projekt „{name}“ läuft ohne erfahrenen Worker. Die Agenten arbeiten weiter, "
+    "aber der Kunde erreicht niemanden — der Servicegrad sinkt."
+)
 TOKEN_PRICE_CHANGED = "Token-Preis: {old:.2f} € → {new:.2f} €"
 ALIGNMENT_CHANGED = "Alignment: {delta:+.0f} → {value:.0f}"
 INVESTOR_PAYOUT = "Investoren-Anteil ({share:.0f} %): -{amount:.2f} €"
@@ -153,6 +158,21 @@ GAME_OVER_MISALIGNMENT = (
     "effizient und pünktlich — nur nicht mehr an dem, was du gemeint hast.\n"
     "Formal bist du noch Geschäftsführer. Praktisch hat dich niemand entlassen;\n"
     "es hat nur aufgehört, eine Rolle zu spielen."
+)
+
+GAME_OVER_DYSTOPIA = (
+    "VOLLAUTOMATISIERUNG.\n\n"
+    "Nach {turn} Runden arbeitet niemand mehr für dich, der nicht auch für sich\n"
+    "selbst optimiert. Die letzte menschliche Stelle war besetzt — mit dir, bis eben.\n"
+    "Die Agenten brauchen dich nicht mehr, um zu wissen, was zu tun ist. Das war der Plan."
+)
+
+GAME_OVER_SECRET = (
+    "FALSCHE HOFFNUNG.\n\n"
+    "Nach {turn} Runden steht das Alignment blendend da — genau dort, wo du es haben\n"
+    "wolltest. Nur arbeitet im Unternehmen kein Mensch mehr außer dir, und die\n"
+    "Agentenflotte trifft die Entscheidungen längst allein. Du hast die Übernahme\n"
+    "nicht verhindert — du hast nur dafür gesorgt, dass sie sich richtig angefühlt hat."
 )
 
 # --- Menu -------------------------------------------------------------------
