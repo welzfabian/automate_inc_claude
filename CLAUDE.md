@@ -69,6 +69,21 @@ questions instead of checking technology IDs. A new technology that reuses an ex
 modifier field is pure configuration in `data/technologies.json`; a new field needs an
 entry in the `AGGREGATION` table (max / multiplicative / additive) and nothing else.
 
+**Every job exists once, and the catalogue is a ladder.** `GameState.started_projects`
+records a blueprint when it is *started*; `ProjectBlueprint.requires` names the smaller jobs
+a client wants to see first - the same shape and the same check as `Technology.requires`, so
+a new rung stays pure configuration. `Game.available_blueprints()` is the single source for
+what may be started, the way `free_slots` is for who may be assigned. Taking a job does not
+shrink the catalogue, it *opens* the next rung - that is the ladder.
+
+**Adding a project is configuration, but `base_income` is not free.**
+`test_full_staffing_beats_every_partial_staffing` imposes an arithmetic floor:
+`base_income x visibility > 160 x n_developers` and `> 140 x n_designers`, and
+`base_income > 240` for anything with a sales post (`BALANCING.md` 33). One-post jobs are
+exempt - dropping their only worker empties the project. To make a job *unprofitable* for a
+human team, raise `basis_fixed_costs`, never lower `base_income`: fixed costs shift the
+level without touching the comparison between two staffings (`BALANCING.md` 34).
+
 **A project earns what the client is currently getting.** `Project.service_level` (0-100)
 scales income, and it falls when nobody maintains the project - which is why it is not
 called progress: 100 is a ceiling the team holds, not a finished state.
@@ -103,7 +118,9 @@ When docs and `data/*.json` disagree, the JSON wins — and any new deviation go
 Two rules there are easy to break by accident:
 - **Humans have `effective_level == 2`**, so a project can be started at all on turn 0.
 - **Attributes a project never required are neutral** (factor 1.0) in the income
-  formula, not zero.
+  formula, not zero - read off `economy.attribute_applies`, which asks `ROLE_ATTRIBUTES`
+  rather than naming roles. This held for aesthetics only until M8 added a job with no
+  developer on it (`BALANCING.md` 35).
 
 ## Process
 

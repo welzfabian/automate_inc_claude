@@ -801,3 +801,208 @@ Vier Befunde, die keiner der obigen Nummern allein gehören:
    bis 7, gegen Runde 72 für den gefährlichen Ast und „gar nicht" für Menschen und
    Level-1-Agenten. Die Ironie aus VISION.md („je besser der Spieler automatisiert, desto
    schneller kommt der Twist") stimmt also — nur ist der Twist derzeit immer derselbe.
+
+---
+
+# Meilenstein 8
+
+## 32. Jeden Auftrag gibt es einmal — und die Leiter hat Sprossen
+
+**Der Befund aus Nr. 31, der das ausgelöst hat:** Das Spiel hatte keine Steigerung.
+`humans` lieferte mit einem *und* mit drei erlaubten Projekten dasselbe Ergebnis, weil
+„Web-App auf Dauerschleife" das Optimum war. Ein Katalog, aus dem man beliebig oft
+dasselbe nehmen kann, ist keine Auswahl, sondern eine Wiederholung.
+
+**Auflösung, zwei Regeln:**
+
+1. **Einmaligkeit.** `GameState.started_projects` merkt sich jeden vergebenen Bauplan.
+   Vermerkt wird beim **Start**, nicht beim Ablauf — ein laufendes Projekt lässt sich
+   nicht abbrechen, also ist der Start der Moment, in dem der Kunde bedient ist. Die Liste
+   liegt neben `active_projects`, weil die am Ende der Laufzeit geleert wird.
+2. **Referenzen.** Jeder Bauplan trägt in `data/projects.json` ein `requires` — dieselbe
+   Form wie `Technology.requires`, dieselbe Prüfung (`ProjectRegistry.missing_requirements`).
+   Ein Kunde vergibt den großen Auftrag an den, der den kleineren vorweisen kann.
+
+Beides ist Konfiguration: Ein zwölfter Bauplan ist ein JSON-Eintrag, keine Code-Änderung.
+
+**Der Katalog wächst beim Abarbeiten, er schrumpft nicht** — genau das ist die Leiter:
+
+| Stellen | Auftrag | Referenz |
+|---:|---|---|
+| 1 | Statische Website, Landingpage | — |
+| 2 | E-Commerce-Shop | Statische Website |
+| 3 | Kunden-App, Web-App | E-Commerce-Shop |
+| 4 | Konzern-Warenwirtschaft ← Web-App · KI-Integration ← Kunden-App | |
+| 5 | SaaS-Plattform | KI-Integration |
+| 6 | Plattform-Neubau | Konzern-Warenwirtschaft |
+| 7 | Konzern-Suite | Plattform-Neubau |
+| 8 | Konzern-KI-Plattform | Konzern-Suite **und** SaaS-Plattform |
+
+Der letzte Auftrag verlangt **beide** Äste. Es gibt keine einzelne Linie, die ihn erreicht —
+wer ihn will, arbeitet den Katalog durch.
+
+## 33. Zwei Untergrenzen, die jedes neue `base_income` einhalten muss
+
+`test_full_staffing_beats_every_partial_staffing` ist seit M3 die Eigenschaft, „die die
+ganze Mechanik trägt" (CLAUDE.md). Sie ist keine Empfehlung, sie ist eine **Rechnung**, und
+die lässt sich hinschreiben. Eine Stelle zu streichen senkt den Attribut-Deckel um
+`(100 − attribute_cap_base) / n` Prozentpunkte, also die Einnahmen um denselben Anteil.
+Damit die volle Besetzung gewinnt, muss dieser Verlust größer sein als das gesparte Gehalt:
+
+| Rolle | Bedingung |
+|---|---|
+| Entwickler | `base_income · Sichtbarkeit > 160 · n_Entwickler` |
+| Designer | `base_income · Sichtbarkeit > 140 · n_Designer` |
+| Sales | `base_income > 240` |
+
+Die Sales-Grenze steht dort, weil eine Sales-Stelle 60 € kostet und 25 % Sichtbarkeit
+bringt: unter 240 € Basis-Einnahmen ist sie ihr Gehalt nicht wert. Die Kunden-App liegt
+mit 246 € seit M1 knapp darüber — die Grenze war also immer da, nur nie aufgeschrieben.
+
+**Ausnahme Ein-Stellen-Projekte:** Wird deren einzige Stelle gestrichen, ist niemand mehr
+zugewiesen, der Servicegrad fällt auf 0 und das Projekt verdient gar nichts (Nr. 11/24).
+Für sie gilt nur `base_income > Gehalt`. Deshalb kommt die Statische Website mit 108 €
+durch, wo die Formel 160 € verlangen würde.
+
+`test_full_staffing_beats_every_partial_staffing` läuft seit M8 über die **Registry**
+statt über eine handgepflegte Liste — bei elf Baupländen fällt eine verletzte Grenze sonst
+niemandem auf.
+
+## 34. Die Menschen-Wand liegt bei sechs Stellen — gesetzt über Fixkosten, nicht über Einnahmen
+
+Vorgabe für M8: Der reine Menschen-Pfad soll ab einer Stufe **unbezahlbar** werden. Der
+naheliegende Hebel wäre, die Einnahmen der großen Aufträge zu drücken — der ist aber
+**verbaut**: Nr. 33 verlangt `base_income · vis > 160 · n_Entwickler`, und daraus folgt für
+ein Menschen-Team zwangsläufig ein Ertrag von mindestens `80 € · n_Entwickler` minus der
+übrigen Gehälter. Über `base_income` lässt sich ein großer Auftrag also gar nicht defizitär
+machen, ohne die Invariante zu brechen.
+
+**Auflösung:** `basis_fixed_costs`. Fixkosten hängen nicht an der Besetzung, verschieben
+also **nur das Niveau** und nie den Vergleich zwischen zwei Besetzungen — die Invariante
+bleibt unberührt, das Vorzeichen kippt trotzdem. Erzählerisch trägt es sich von selbst:
+Ein Konzernauftrag bringt Infrastruktur, Lizenzen und Compliance mit.
+
+Eingeschwungener Zustand, `tools/simulate.py --steady`, Tokenpreis 10 €:
+
+| Stellen | Auftrag | Menschen | Mensch + Level-1-Agenten |
+|---:|---|---:|---:|
+| 3 | Web-App | +87,0 | +187,0 |
+| 4 | Konzern-Warenwirtschaft | +95,0 | +245,0 |
+| 5 | SaaS-Plattform | +75,5 | +287,0 |
+| 6 | Plattform-Neubau | **+20,0** | +282,0 |
+| 7 | Konzern-Suite | **−25,0** | +293,0 |
+| 8 | Konzern-KI-Plattform | **−80,0** | +295,0 |
+
+Die Wand steht bei **sechs Stellen**, und sie steht nicht erst beim Vorzeichen: Sechs
+Stellen brauchen sieben Büroplätze, also zwei Ausbauten (900 € über den Deckel von fünf),
+und tragen über 28 Runden 560 € ein. Der Schreibtisch verdient sich nicht zurück, bevor
+die Einnahmen überhaupt negativ werden. Ab sieben Stellen zahlt man drauf.
+
+Agenten brauchen keinen Schreibtisch (M5) und kosten ein Drittel. Ihr Ertrag pro Runde
+läuft ab Stufe 5 flach (287 → 295), ihr **Laufzeit-Ertrag** steigt weiter (7.462 → 9.440 €),
+weil die großen Aufträge länger laufen. Automatisieren ist damit nicht mehr die bessere
+Rechnung, sondern ab Stufe 6 die einzige.
+
+## 35. Nicht angeforderte Qualität war nie neutral
+
+**Der Fehler:** Nr. 2 hält seit M1 fest, dass Attribute, die ein Projekt nicht anfordert,
+als Faktor 1,0 zählen. Umgesetzt war das nur für **Ästhetik** (`aesthetics_applies`), weil
+bis M8 jedes Projekt eine Entwicklerstelle hatte. Die Landingpage (nur Designer) hat den
+Fall aufgedeckt: Sie verdiente 49 statt 98 € — die Hälfte, weil `quality` bei
+`attribute_start = 50` stehen blieb und trotzdem multipliziert wurde.
+
+**Auflösung:** `economy.attribute_applies(project, attribute)` liest die Frage aus
+`ROLE_ATTRIBUTES` ab, statt zwei Rollennamen fest zu verdrahten — „kein Entwickler" und
+„kein Designer" sind damit derselbe Fall. `calculate_income` hat jetzt beide Schalter.
+
+Dritter Fall derselben Art nach Nr. 22 und Nr. 24, diesmal andersherum: keine Bedingung,
+die zum falschen Zeitpunkt geprüft wurde, sondern eine Regel, die **für einen Fall
+formuliert und für einen Sonderfall implementiert** wurde. Kein Test deckte sie ab, weil es
+den Fall im Katalog nicht gab.
+
+## 36. Keine Forscher-Stellen auf Projekten
+
+Die Spec definiert `ENTERPRISE_SOFTWARE` und `KI_INTEGRATION` mit je einer
+**Forscher**-Stelle. Beide Baupläne gibt es jetzt, beide **ohne** sie.
+
+**Grund:** Ein Forscher hält kein Projektattribut (`ROLE_ATTRIBUTES` kennt nur Entwickler
+und Designer) und bringt keine Sichtbarkeit. Seine Stelle leer zu lassen spart 90 €/Runde
+und kostet fast nichts — nur einen langsameren Servicegrad-Aufbau, der die 100 trotzdem
+erreicht (Nr. 12). Die Teilbesetzung schlägt damit die Vollbesetzung, und Nr. 33 fällt.
+
+**Verworfen:** Forscher auf `quality` zusätzlich zum Entwickler abzubilden. Zwei Rollen auf
+demselben Attribut ziehen in `_apply_worker_effects` gegeneinander — die leere
+Forscher-Stelle drückt mit `attribute_entropy` nach unten, die besetzten Entwicklerstellen
+schieben im selben Zug wieder hoch. Das Ergebnis hängt an der Schlüsselreihenfolge im JSON
+und ist ein Patt, keine Strafe.
+
+**Offen:** Eine Forscher-Stelle auf einem Projekt braucht zuerst ein Attribut, das sie hält.
+Solange es das nicht gibt, bleibt Forschung eine reine Abteilungssache.
+
+## 37. Was die Leiter mit den Enden macht
+
+Dies ist der Befund, den M8 **nicht gesucht hat.** Nr. 25 hat gemessen: Wer automatisiert
+und die Menschen entlässt, sobald die Flotte trägt, bekommt „FALSCHE HOFFNUNG" in 11 von 11
+Seeds; die Dystopie nur, wer überflüssige Menschen drei Runden zu lang bezahlt. Dieselbe
+Messung nach M8 (`tools/simulate.py --endings --seeds 11`):
+
+| Menschen nach Flottenschluss gehalten | vor M8 | nach M8 |
+|---|---|---|
+| +0 Runden | geheimes Ende 11 (⚖ 89) | **Dystopie 11 (⚖ 66–76)** |
+| +3 Runden | Dystopie 11 | Dystopie 11 (⚖ 43–58) |
+| +8 Runden | Dystopie 10, Bankrott 1 | Kontrollverlust 9, Bankrott 2 |
+
+**Warum:** Die Leiter verlängert den Anlauf. Vor M8 stand die Flotte in Runde 6–7, weil ein
+wiederholbares Projekt sie sofort finanzierte; jetzt muss sich das Unternehmen erst
+hocharbeiten und erreicht die Vollautomatisierung in Runde 11. In diesen zusätzlichen
+Runden laufen die Level-2-Agenten bereits und zehren am Alignment. Es steht beim Übergang
+bei 66–76 statt bei 89 — unter der Grenze von 80.
+
+**Das geheime Ende bleibt erreichbar, aber nur noch für den, der die Leiter überspringt:**
+Stufe 2 erforschen, sechs Level-2-Agenten auf einmal kaufen, alle Menschen entlassen, ohne
+sich um Aufträge zu kümmern — 21 von 21 Seeds enden in Runde 7 bei ⚖ 94 mit „FALSCHE
+HOFFNUNG". Das ist genau die Ironie, die [VISION.md](./VISION.md) beschreibt („je besser der
+Spieler automatisiert, desto schneller kommt der Twist"), und das seltene Ende ist jetzt
+tatsächlich das seltene.
+
+**Ausdrücklich nicht behoben:** Der Kern von Nr. 25 steht unverändert. `_check_game_over`
+prüft weiterhin einen **Zeitpunkt**, wo [VISION.md](./VISION.md) eine **Dauer** verlangt
+(„Alignment > 80 bis Spielende"). Verändert hat sich nur, mit welchem Alignment normales
+Spiel an diesem Zeitpunkt ankommt. Eine spätere Änderung am Tempo — schnellere Forschung,
+billigere Agenten, ein kürzerer Katalog — kippt die Verteilung wieder zurück, ohne dass
+jemand die Enden angefasst hätte. Der offene Punkt bleibt offen.
+
+## 38. Was die Simulation zu M8 zeigt
+
+```
+PYTHONPATH=src python3 tools/simulate.py --seeds 11 --turns 60
+PYTHONPATH=src python3 tools/simulate.py --seeds 11 --turns 120
+```
+
+Drei gleichzeitige Projekte (Voreinstellung seit M8 — mit nur einem kommt keine Politik
+über die dritte Sprosse hinaus):
+
+| Strategie | 60 Runden | größte Stufe | 120 Runden |
+|---|---|---:|---|
+| `humans` | überlebt 10/11 | 3 | **Bankrott 11/11 (R21–79)** |
+| `humans+funding` | Bankrott 7/11 | 5 | Bankrott 11/11 (R31–85) |
+| `level1-fleet` | überlebt 11/11 | 8 | Bankrott 6/11 (R64–95), Katalog leer 8/11 |
+| `automation` | **Dystopie 11/11 (R11)** | 4 | Dystopie 11/11 |
+| `dangerous-tree` | überlebt 8/11 | 8 | Kontrollverlust 8/11 (R70–73) |
+
+Vier Befunde:
+
+1. **Das Plateau ist weg.** `humans` lief vor M8 über 60 Runden ohne eine knappe Runde
+   durch und endete bei 1.697 €. Jetzt arbeitet es fünf Aufträge ab, kommt mit drei
+   Büroplätzen nie über drei Stellen hinaus und geht daran ein.
+2. **Der Bürodeckel ist die Sprosse, an der der Menschen-Pfad hängt.** `humans` und
+   `humans+funding` unterscheiden sich nur im Ausbau — und das trennt Stufe 3 von Stufe 5.
+   Über Stufe 5 kommt auch der Ausbau nicht (Nr. 34).
+3. **Der Katalog geht aus, und das bringt um.** `level1-fleet` arbeitet über 120 Runden
+   alle elf Aufträge ab (Katalog leer in 8 von 11 Läufen) und geht danach in 6 von 11
+   Läufen bankrott: keine Aufträge, aber weiterlaufende Gehälter. Das ist die Lücke, die
+   die Produkte füllen sollen — **absichtlich offen gelassen**, nicht übersehen.
+4. **Geld ist zum ersten Mal knapp.** Der offene Punkt „Geldsenke fehlt" (seit M3) ist
+   damit beantwortet: Es gibt keinen Lauf mehr, der mit 10.000–23.000 € endet, weil jede
+   weitere Sprosse Personal, Schreibtische und Fixkosten verlangt. Was die Ereignisse (M4),
+   das Büro (M5) und die Investoren (M5) nicht geschafft haben, schafft die Leiter.

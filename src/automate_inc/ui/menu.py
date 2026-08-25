@@ -115,13 +115,16 @@ class Menu:
         self.show(self.game.fire_worker(worker_id))
 
     def start_project(self) -> None:
+        available = self.game.available_blueprints()
+        if not available:
+            return self.note(S.CATALOG_EXHAUSTED, style="dim")
         options = [
             (
                 bp.id,
-                f"{bp.name} — {bp.base_income} €/Runde, {bp.lifetime} Runden "
-                f"— {bp.description}",
+                f"{bp.name} — {sum(bp.required_roles.values())} Stellen, "
+                f"{bp.base_income} €/Runde, {bp.lifetime} Runden — {bp.description}",
             )
-            for bp in self.game.registry.all()
+            for bp in available
         ]
         blueprint_id = self.choose(S.HEADER_CATALOG, options)
         if blueprint_id is None:

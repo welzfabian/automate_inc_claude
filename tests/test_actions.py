@@ -10,6 +10,7 @@ representative case.
 
 import pytest
 
+from _helpers import commission
 from automate_inc import strings as S
 from automate_inc.core.game import INVESTOR_EQUITY_CAP, MAX_AGENT_LEVEL, Game
 from automate_inc.core.workers import Role, Worker, WorkerType
@@ -23,7 +24,7 @@ from automate_inc.core.workers import Role, Worker, WorkerType
 GUARDED_CALLS = [
     pytest.param(lambda g: g.hire_worker(Role.DEVELOPER, WorkerType.HUMAN), id="hire_worker"),
     pytest.param(lambda g: g.fire_worker("w_1"), id="fire_worker"),
-    pytest.param(lambda g: g.start_project("static_website"), id="start_project"),
+    pytest.param(lambda g: commission(g, "static_website"), id="start_project"),
     pytest.param(lambda g: g.assign_worker("w_1", "p_1"), id="assign_worker"),
     pytest.param(lambda g: g.unassign_worker("w_1"), id="unassign_worker"),
     pytest.param(lambda g: g.research("efficient_development"), id="research"),
@@ -70,7 +71,7 @@ def _staffed_game() -> Game:
 def _game_with_an_assigned_worker() -> Game:
     game = Game(seed=1)
     game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN)
-    game.start_project("static_website")
+    commission(game, "static_website")
     project_id = game.state.active_projects[0].id
     game.assign_worker(game.state.workers[0].id, project_id)
     return game
@@ -113,7 +114,7 @@ FAILURE_CASES = [
     pytest.param(_fresh_game, lambda g: g.fire_worker("nope"), id="fire_worker_unknown_worker"),
     pytest.param(
         _staffed_game,
-        lambda g: g.start_project("does_not_exist"),
+        lambda g: commission(g, "does_not_exist"),
         id="start_project_unknown_blueprint",
     ),
     pytest.param(

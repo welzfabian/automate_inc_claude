@@ -22,6 +22,18 @@
       "lifetime": 10
     },
     {
+      "id": "landing_page",
+      "name": "Landingpage",
+      "description": "Eine Seite, ein Button, ein Versprechen. Der Kunde nennt es Rebranding.",
+      "project_type": "WEBSITE",
+      "required_roles": {
+        "DESIGNER": 1
+      },
+      "base_income": 98,
+      "basis_fixed_costs": 0,
+      "lifetime": 10
+    },
+    {
       "id": "ecommerce_shop",
       "name": "E-Commerce-Shop",
       "description": "Ein Onlineshop mit Warenkorb, Checkout und drei Produkten.",
@@ -30,6 +42,9 @@
         "DEVELOPER": 1,
         "DESIGNER": 1
       },
+      "requires": [
+        "static_website"
+      ],
       "base_income": 208,
       "basis_fixed_costs": 0,
       "lifetime": 16
@@ -44,6 +59,9 @@
         "DESIGNER": 1,
         "SALES": 1
       },
+      "requires": [
+        "ecommerce_shop"
+      ],
       "base_income": 246,
       "basis_fixed_costs": 10,
       "lifetime": 22
@@ -57,9 +75,114 @@
         "DEVELOPER": 2,
         "DESIGNER": 1
       },
+      "requires": [
+        "ecommerce_shop"
+      ],
       "base_income": 337,
       "basis_fixed_costs": 20,
       "lifetime": 22
+    },
+    {
+      "id": "enterprise_software",
+      "name": "Konzern-Warenwirtschaft",
+      "description": "Drei Entwickler, ein Designer und ein Lastenheft, das älter ist als der Kunde.",
+      "project_type": "ENTERPRISE_SOFTWARE",
+      "required_roles": {
+        "DEVELOPER": 3,
+        "DESIGNER": 1
+      },
+      "requires": [
+        "web_app"
+      ],
+      "base_income": 520,
+      "basis_fixed_costs": 115,
+      "lifetime": 24
+    },
+    {
+      "id": "ki_integration",
+      "name": "KI-Integration",
+      "description": "Der Kunde will KI. Wofür genau, klärt sich im Laufe des Projekts. Angeblich.",
+      "project_type": "KI_INTEGRATION",
+      "required_roles": {
+        "DEVELOPER": 2,
+        "DESIGNER": 1,
+        "SALES": 1
+      },
+      "requires": [
+        "mobile_app"
+      ],
+      "base_income": 380,
+      "basis_fixed_costs": 90,
+      "lifetime": 24
+    },
+    {
+      "id": "saas_platform",
+      "name": "SaaS-Plattform",
+      "description": "Endlich wiederkehrende Einnahmen — für den Kunden. Du baust sie nur.",
+      "project_type": "WEB_APP",
+      "required_roles": {
+        "DEVELOPER": 2,
+        "DESIGNER": 2,
+        "SALES": 1
+      },
+      "requires": [
+        "ki_integration"
+      ],
+      "base_income": 430,
+      "basis_fixed_costs": 102,
+      "lifetime": 26
+    },
+    {
+      "id": "platform_rebuild",
+      "name": "Plattform-Neubau",
+      "description": "Das alte System läuft seit zwölf Jahren. Deshalb muss es weg, sagt der neue CTO.",
+      "project_type": "ENTERPRISE_SOFTWARE",
+      "required_roles": {
+        "DEVELOPER": 3,
+        "DESIGNER": 2,
+        "SALES": 1
+      },
+      "requires": [
+        "enterprise_software"
+      ],
+      "base_income": 440,
+      "basis_fixed_costs": 90,
+      "lifetime": 28
+    },
+    {
+      "id": "corporate_suite",
+      "name": "Konzern-Suite",
+      "description": "Sieben Stellen, vier Fachbereiche, ein Lenkungsausschuss. Die Software ist Nebensache.",
+      "project_type": "ENTERPRISE_SOFTWARE",
+      "required_roles": {
+        "DEVELOPER": 4,
+        "DESIGNER": 2,
+        "SALES": 1
+      },
+      "requires": [
+        "platform_rebuild"
+      ],
+      "base_income": 560,
+      "basis_fixed_costs": 205,
+      "lifetime": 30
+    },
+    {
+      "id": "group_ai_platform",
+      "name": "Konzern-KI-Plattform",
+      "description": "Der größte Auftrag, den es gibt. Kein Mensch kann ihn mehr bezahlen — das ist die Pointe.",
+      "project_type": "KI_INTEGRATION",
+      "required_roles": {
+        "DEVELOPER": 5,
+        "DESIGNER": 2,
+        "SALES": 1
+      },
+      "requires": [
+        "corporate_suite",
+        "saas_platform"
+      ],
+      "base_income": 700,
+      "basis_fixed_costs": 355,
+      "lifetime": 32
     }
   ]
 }

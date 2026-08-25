@@ -32,7 +32,7 @@ from dataclasses import dataclass, field, replace
 
 from automate_inc.core.events import Event, EventRegistry
 from automate_inc.core.game import END_CONDITIONS, Game, TurnReport
-from automate_inc.core.projects import load_registry
+from automate_inc.core.projects import ProjectBlueprint, load_registry, load_tuning
 from automate_inc.core.tech import Modifiers
 from automate_inc.core.workers import Role, Worker, WorkerType
 
@@ -90,7 +90,9 @@ class Strategy:
     """One way to play, followed to the end without reacting to how it is going."""
 
     name: str
-    blueprint: str = "web_app"
+    blueprint: str | None = None
+    """Restrict the policy to a single job. ``None`` climbs the ladder instead:
+    every blueprint exists once (M8), so repeating one is no longer a plan."""
     staff: StaffPlan = humans_only
     """Who fills a project's posts. Read per turn, so a plan can switch to agents
     the moment research unlocks a level."""
@@ -102,7 +104,10 @@ class Strategy:
     researcher_level: int = 1
     """Researchers are always agents: a human one costs 90 €/round against a
     level-1 agent's 3 tokens, and the office cap has no room for them (M5)."""
-    max_projects: int = 1
+    max_projects: int = 3
+    """Jobs run at once. Three since M8: the ladder is climbed by taking on more
+    work, not by repeating one job, and a policy limited to one project never
+    gets past the third rung."""
     drop_humans: bool = False
     """Fire every human once the project posts no longer need one - the move the
     total-automation endings ask for."""
@@ -116,6 +121,13 @@ class Strategy:
     raise_funding: bool = False
     reserve: float = 150.0
     """Money kept back from hiring, so one bad event does not end the run."""
+    prudent: bool = True
+    """Refuse a job whose fully staffed team would cost more than it earns.
+
+    A player can read that off the catalogue before signing (posts, income and
+    fixed costs are all on the menu line), so a policy that signs anyway is
+    measuring its own recklessness rather than the balance. Turned off, it
+    measures exactly that - see the ``humans-greedy`` strategy."""
 
     def senior_plan(self) -> StaffPlan:
         return self.seniors if self.seniors is not None else self.staff
@@ -139,6 +151,7 @@ def play_turn(game: Game, strategy: Strategy, memo: dict[str, int]) -> None:
     _upgrade(game, strategy)
     _start_projects(game, strategy)
     _assign(game)
+    _lay_off_surplus(game, strategy)
     _drop_humans(game, strategy, memo)
     _buy_tokens(game)
 
@@ -212,36 +225,71 @@ def _start_projects(game: Game, strategy: Strategy) -> None:
     """Keep ``max_projects`` running, but never start one the team cannot fill.
 
     A project nobody is answerable for only drains the service level
-    (BALANCING.md 24), so an unaffordable second project is worse than none.
+    (BALANCING.md 24), so an unaffordable job is worse than no job at all.
     """
     if not any(w.is_senior for w in game.state.workers):
         # Nothing to run a project with yet - hire the first responsible worker.
         _hire(game, Role.DEVELOPER, strategy.senior_plan(), 0.0)
     while len(game.state.active_projects) < strategy.max_projects:
-        if game.state.money < strategy.reserve + _staffing_cost(game, strategy):
-            return
-        if not _fits_in_the_office(game, strategy):
-            return
-        if not game.start_project(strategy.blueprint).ok:
+        blueprint = _pick_blueprint(game, strategy)
+        if blueprint is None or not game.start_project(blueprint.id).ok:
             return
         _staff_up(game, strategy)
 
 
-def _posts(game: Game, strategy: Strategy) -> dict[Role, int]:
-    blueprint = game.registry.get(strategy.blueprint)
-    return dict(blueprint.required_roles) if blueprint is not None else {}
+def _pick_blueprint(game: Game, strategy: Strategy) -> ProjectBlueprint | None:
+    """The biggest job still on offer that the company could actually take on.
+
+    Biggest-first is the profit-maximising read of the ladder and the one that
+    stresses the balance hardest: it walks the catalogue down from the top until
+    something is both payable and staffable, instead of working politely upwards.
+    """
+    offered = game.available_blueprints()
+    if strategy.blueprint is not None:
+        # Restricting to one job means restricting to the way up to it as well -
+        # every rung above the first wants a smaller job on the record (M8).
+        wanted = reference_chain(strategy.blueprint)
+        offered = [bp for bp in offered if bp.id in wanted]
+    for blueprint in sorted(offered, key=lambda bp: -sum(bp.required_roles.values())):
+        if game.state.money < strategy.reserve + _staffing_cost(game, strategy, blueprint):
+            continue
+        if strategy.prudent and _expected_net(game, strategy, blueprint) <= 0:
+            continue
+        if _fits_in_the_office(game, strategy, blueprint):
+            return blueprint
+    return None
 
 
-def _staffing_cost(game: Game, strategy: Strategy) -> float:
+def _expected_net(game: Game, strategy: Strategy, blueprint: ProjectBlueprint) -> float:
+    """What a fully staffed team would clear per round on this job.
+
+    Assumes the attributes have reached their caps, which a full team always does
+    - so this is the steady state ``--steady`` prints, not the ramp. A level-1
+    plan also needs one senior beside the fleet (BALANCING.md 24); that worker is
+    not counted here, so the estimate is mildly optimistic for exactly that plan.
+    """
+    kind, level = strategy.staff(game.modifiers)
+    wages = visibility = 0.0
+    for role, count in blueprint.required_roles.items():
+        worker = Worker(id="_", role=role, worker_type=kind, level=level)
+        cost = worker.cost_per_round(game.modifiers)
+        wages += count * (cost.money + cost.tokens * game.state.token_price)
+        if role is Role.SALES:
+            visibility += count * load_tuning().sales_visibility_bonus * worker.efficiency
+    income = blueprint.base_income * (1.0 + visibility / 100.0)
+    return income - wages - blueprint.basis_fixed_costs
+
+
+def _staffing_cost(game: Game, strategy: Strategy, blueprint: ProjectBlueprint) -> float:
     """One round of pay for a full team on the blueprint, as a go/no-go budget."""
     kind, level = strategy.staff(game.modifiers)
     return sum(
         count * game.hiring_cost(role, kind, level)
-        for role, count in _posts(game, strategy).items()
+        for role, count in blueprint.required_roles.items()
     )
 
 
-def _fits_in_the_office(game: Game, strategy: Strategy) -> bool:
+def _fits_in_the_office(game: Game, strategy: Strategy, blueprint: ProjectBlueprint) -> bool:
     """Whether a human-staffed plan still has desks for one more team (M5).
 
     A project nobody can be hired for is worse than no project at all: it earns
@@ -252,10 +300,14 @@ def _fits_in_the_office(game: Game, strategy: Strategy) -> bool:
     kind, _ = strategy.staff(game.modifiers)
     if kind is not WorkerType.HUMAN:
         return True
-    humans = [w for w in game.state.workers if w.is_human]
-    idle = sum(1 for w in humans if w.assigned_to is None)
-    to_hire = max(0, sum(_posts(game, strategy).values()) - idle)
-    return len(humans) + to_hire <= game.state.office_capacity
+    # Surplus people are let go in the same turn (``_lay_off_surplus``), so the
+    # head count this plan settles at is exactly the number of posts it owes -
+    # counting who happens to sit there right now would let a sales worker left
+    # over from the last job block a developer's desk on the next one.
+    posts = sum(blueprint.required_roles.values()) + sum(
+        sum(p.required_roles.values()) for p in game.state.active_projects
+    )
+    return posts <= game.state.office_capacity
 
 
 def _assign(game: Game) -> None:
@@ -265,6 +317,26 @@ def _assign(game: Game) -> None:
         for project in game.projects_needing(worker.role):
             if game.assign_worker(worker.id, project.id).ok:
                 break
+
+
+def _lay_off_surplus(game: Game, strategy: Strategy) -> None:
+    """Let go of whoever no running job has a post for.
+
+    The ladder makes this a real move: each rung wants a different mix, so the
+    sales worker who carried the customer app is dead weight on the web app -
+    a desk in the office and a salary against no income. Researchers are exempt
+    (they never take a post), and the company always keeps someone answerable
+    so its running projects do not slide (BALANCING.md 24).
+    """
+    for worker in list(game.state.workers):
+        if worker.assigned_to is not None or worker.role is Role.RESEARCHER:
+            continue
+        if any(game.free_slots(p, worker.role) for p in game.state.active_projects):
+            continue
+        others = [w for w in game.state.workers if w is not worker]
+        if worker.is_senior and not any(w.is_senior for w in others):
+            continue
+        game.fire_worker(worker.id)
 
 
 def _drop_humans(game: Game, strategy: Strategy, memo: dict[str, int]) -> None:
@@ -320,6 +392,13 @@ class RunResult:
     researched: int = 0
     peak_agents: int = 0
     peak_humans: int = 0
+    jobs_done: int = 0
+    """Blueprints commissioned - how far up the ladder the run actually got."""
+    biggest_job: int = 0
+    """Posts on the largest job taken. The rung, in the only unit that matters."""
+    catalogue_left: int = 0
+    """Jobs still on offer at the end. Zero means the company ran out of work -
+    the pressure M8 leaves for the products milestone to answer."""
 
 
 ENDING_IDS = {condition.message: condition.id for condition in END_CONDITIONS}
@@ -367,6 +446,16 @@ def run(strategy: Strategy, seed: int, turns: int, verbose: bool = False) -> Run
         researched=len(game.state.researched),
         peak_agents=sum(1 for w in game.state.workers if not w.is_human),
         peak_humans=sum(1 for w in game.state.workers if w.is_human),
+        jobs_done=len(game.state.started_projects),
+        biggest_job=max(
+            (
+                sum(bp.required_roles.values())
+                for bp in (game.registry.get(i) for i in game.state.started_projects)
+                if bp is not None
+            ),
+            default=0,
+        ),
+        catalogue_left=len(game.available_blueprints()),
     )
 
 
@@ -385,6 +474,11 @@ STRATEGIES: tuple[Strategy, ...] = (
     Strategy(
         name="humans",
         staff=humans_only,
+    ),
+    Strategy(
+        name="humans-greedy",
+        staff=humans_only,
+        prudent=False,
     ),
     Strategy(
         name="humans+funding",
@@ -440,6 +534,20 @@ That is the difference between reaching the end of the tech tree and going broke
 halfway up it - see BALANCING.md 28."""
 
 
+def reference_chain(blueprint_id: str) -> set[str]:
+    """A job and every job that has to be on the record before it (M8)."""
+    registry = load_registry()
+    chain: set[str] = set()
+    pending = [blueprint_id]
+    while pending:
+        blueprint = registry.get(pending.pop())
+        if blueprint is None or blueprint.id in chain:
+            continue
+        chain.add(blueprint.id)
+        pending.extend(blueprint.requires)
+    return chain
+
+
 # -- the steady state --------------------------------------------------------
 
 STEADY_STAFF: tuple[tuple[str, WorkerType, int], ...] = (
@@ -487,10 +595,16 @@ def _settle_in(
     game.state.tokens = 1e9
     game.state.investor_equity = 0.0
     game.state.office_capacity = 99
+    # Measuring one job in isolation: put its references on the record rather
+    # than playing them out, the same shortcut ``tests/_helpers.unlock`` takes.
+    game.state.started_projects = sorted(reference_chain(blueprint_id) - {blueprint_id})
+    # The senior has to hold a post this blueprint actually asks for - the ladder
+    # has jobs without a developer on it.
+    senior_role = next(iter(load_registry().get(blueprint_id).required_roles))
     if kind is WorkerType.AGENT and level >= 2:
-        game.hire_worker(Role.DEVELOPER, WorkerType.AGENT, level)
+        game.hire_worker(senior_role, WorkerType.AGENT, level)
     else:
-        game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN)
+        game.hire_worker(senior_role, WorkerType.HUMAN)
     game.start_project(blueprint_id)
     project = game.state.active_projects[0]
     game.assign_worker(game.state.workers[-1].id, project.id)
@@ -561,7 +675,13 @@ def summarise(strategy: Strategy, results: list[RunResult]) -> str:
         span = f"R{min(r.turns for r in runs)}-{max(r.turns for r in runs)}"
         parts.append(f"{outcome} {len(runs)}/{len(results)} ({span})")
     low = statistics.median(r.min_money for r in results)
-    return f"{strategy.name:<22} {'; '.join(parts):<58} Median-Tiefststand {low:>9.0f} €"
+    jobs = statistics.median(r.jobs_done for r in results)
+    rung = statistics.median(r.biggest_job for r in results)
+    dry = sum(1 for r in results if r.catalogue_left == 0)
+    return (
+        f"{strategy.name:<22} {'; '.join(parts):<56} Tief {low:>7.0f} € "
+        f"Aufträge {jobs:>4.1f} größte Stufe {rung:>3.1f} Katalog leer {dry}/{len(results)}"
+    )
 
 
 def main() -> None:

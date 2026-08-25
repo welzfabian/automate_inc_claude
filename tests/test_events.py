@@ -6,6 +6,7 @@ import json
 
 import pytest
 
+from _helpers import commission
 from automate_inc.core.events import (
     ActiveEffect,
     Event,
@@ -456,7 +457,7 @@ def grown_company(seed: int) -> Game:
         game.hire_worker(Role.DEVELOPER, WorkerType.AGENT)
     for _ in range(2):
         game.hire_worker(Role.DEVELOPER, WorkerType.HUMAN)
-    game.start_project("web_app")
+    commission(game, "web_app")
     project_id = game.state.active_projects[0].id
     for worker in game.state.workers[:3]:
         game.assign_worker(worker.id, project_id)

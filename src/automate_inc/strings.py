@@ -48,6 +48,13 @@ ERR_NOT_ENOUGH_MONEY = "Nicht genug Geld. Du brauchst {needed:.2f} €, du hast 
 ERR_UNKNOWN_WORKER = "Diesen Worker gibt es nicht."
 ERR_UNKNOWN_PROJECT = "Dieses Projekt gibt es nicht."
 ERR_UNKNOWN_BLUEPRINT = "Diesen Projekttyp gibt es nicht im Katalog."
+ERR_PROJECT_LOCKED = (
+    "Für „{name}“ will der Kunde eine Referenz sehen. Dir fehlt: {missing}."
+)
+ERR_PROJECT_TAKEN = (
+    "„{name}“ hast du schon gebaut. Jeden Auftrag gibt es einmal — "
+    "der Kunde braucht keinen zweiten."
+)
 ERR_ALREADY_ASSIGNED = "{worker} arbeitet bereits an „{project}“."
 ERR_NOT_ASSIGNED = "{worker} ist gar keinem Projekt zugewiesen."
 ERR_NO_SENIOR_WORKER = (
@@ -206,6 +213,10 @@ HEADER_PROJECTS = "AKTIVE PROJEKTE"
 HEADER_TEAM = "TEAM"
 HEADER_LOG = "LETZTE RUNDE"
 HEADER_CATALOG = "PROJEKTKATALOG"
+CATALOG_EXHAUSTED = (
+    "Der Katalog ist leer. Du hast jeden Auftrag gebaut, den es gab — "
+    "und die laufenden Projekte laufen aus."
+)
 HEADER_RESEARCH = "FORSCHUNG"
 HEADER_ACTIVE_EVENTS = "LAUFENDE EREIGNISSE"
 ACTIVE_EVENT_LINE_TEMPORARY = "{name} — {label} — noch {remaining} Runden"
