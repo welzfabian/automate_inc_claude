@@ -10,7 +10,16 @@ pytest                           # all tests (pyproject sets pythonpath=["src"])
 pytest tests/test_turn.py::test_bankruptcy_ends_the_game    # a single test
 PYTHONPATH=src python3 -m automate_inc                      # run without the launcher
 ruff check .                     # lint; the tree is clean, keep it that way
+
+PYTHONPATH=src python3 tools/simulate.py                    # balance sim, every strategy
+PYTHONPATH=src python3 tools/simulate.py --endings          # which ending fires, and why
+PYTHONPATH=src python3 tools/simulate.py --steady           # income/costs per blueprint
 ```
+
+`tools/simulate.py` plays the game with scripted policies over many seeds. It is
+deliberately **not** part of the test suite: it measures the balance, it asserts nothing
+about it. Every table under "Nach M7" in `docs/BALANCING.md` names the invocation that
+produced it — re-run those before changing a number in `data/*.json`.
 
 `ruff check .` passes as of M3. `UP042` is switched off on purpose: the enums mix in
 `str` because they are serialised through `.value` into the save file, and moving them to
@@ -108,7 +117,15 @@ serialised field — `from_dict` rejects unknown versions on purpose.
 **Balancing numbers are simulated, not guessed.** M3 predicted that technology costs
 would have to triple and the simulation refuted it — the bottleneck was never money. Any
 number that shapes the pacing of a run gets played or simulated before it is written into
-`data/*.json`, and the reasoning goes into `BALANCING.md`.
+`data/*.json`, and the reasoning goes into `BALANCING.md`. Use `tools/simulate.py` for
+that; add a `Strategy` to it rather than writing a throwaway script, so the next milestone
+can re-run what this one measured.
+
+**A simulation measures the quantity it measures.** `BALANCING.md` 22, 25 and 29 are the
+same mistake in three places: a number was read as the answer to a question it was never
+asked. Before trusting a measurement, check that the policy producing it plays the way a
+player would — Nr. 29's 45 % bankruptcy rate came from a team that never took a second
+project after its first one expired.
 
 **The missing money sink stays an open point.** M4 answers it in part (recurring fixed
 costs from events), deliberately not in full. Do not tick it off in
