@@ -89,6 +89,47 @@ def test_max_last_net_needs_a_worse_last_round():
     assert REGISTRY.is_available(event, lossy)
 
 
+def test_min_alignment_needs_at_least_the_threshold():
+    event = Event(
+        id="x", category=EventCategory.AI, name="X", description="",
+        requires={"min_alignment": 50}, chance=1.0, once=False, options=(),
+    )
+    low = EventContext(**{**vars(NOTHING_UNLOCKED), "alignment": 49.0})
+    assert not REGISTRY.is_available(event, low)
+    assert REGISTRY.is_available(event, NOTHING_UNLOCKED)  # alignment defaults to 100.0
+
+
+def test_max_money_needs_at_or_below_the_threshold():
+    event = Event(
+        id="x", category=EventCategory.MARKET, name="X", description="",
+        requires={"max_money": 500}, chance=1.0, once=False, options=(),
+    )
+    assert not REGISTRY.is_available(event, NOTHING_UNLOCKED)  # money defaults to 1000.0
+    poor = EventContext(**{**vars(NOTHING_UNLOCKED), "money": 500.0})
+    assert REGISTRY.is_available(event, poor)
+
+
+def test_agents_outnumber_humans_compares_headcounts():
+    event = Event(
+        id="x", category=EventCategory.AI, name="X", description="",
+        requires={"agents_outnumber_humans": True}, chance=1.0, once=False, options=(),
+    )
+    assert not REGISTRY.is_available(event, NOTHING_UNLOCKED)  # 0 agents, 0 humans
+    outnumbered = EventContext(**{**vars(NOTHING_UNLOCKED), "agents": 3, "humans": 1})
+    assert REGISTRY.is_available(event, outnumbered)
+
+
+def test_agents_outnumber_humans_false_does_not_require_the_opposite():
+    """``{"agents_outnumber_humans": false}`` is not "humans must not be
+    outnumbered" - the check is skipped outright, same as omitting it."""
+    event = Event(
+        id="x", category=EventCategory.AI, name="X", description="",
+        requires={"agents_outnumber_humans": False}, chance=1.0, once=False, options=(),
+    )
+    lopsided = EventContext(**{**vars(NOTHING_UNLOCKED), "agents": 5, "humans": 0})
+    assert REGISTRY.is_available(event, lopsided)
+
+
 # -- catalog validation --------------------------------------------------------
 
 
