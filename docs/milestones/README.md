@@ -89,6 +89,28 @@ hier, damit sie beim Planen des nächsten Meilensteins auf dem Tisch liegen.
   existieren. Stufe 3 lohnt sich damit ausschließlich als Türöffnerin für den
   DANGEROUS-Ast. Offen, ob das die beabsichtigte Satire ist oder eine Zahl, die nachgezogen
   gehört.
+- **Die Investoren-Dividende ignoriert die Tokenrechnung**
+  ([BALANCING.md](../BALANCING.md) Nr. 39). `Game._pay_investors` bemisst die Auszahlung an
+  `income - costs_money`; Agenten kosten Tokens, die erst danach in `_settle` beglichen
+  werden. Für ein Agententeam ist die Bemessungsgrundlage damit fast der Umsatz: Auf der
+  obersten Sprosse werden bei 23 € Rundengewinn 53,90 € ausgeschüttet — die Zusage des
+  Docstrings („kein Anspruch auf dein Defizit") gilt genau dort nicht, wo sie gebraucht
+  wird. Über ganze Läufe trägt das den Unterschied zwischen „spürbar wenig" (Menschen-Team,
+  117 € über 60 Runden) und tödlich (Level-1-Flotte, 4.945 €; bei 40 % Bankrott in 6 von 11
+  Läufen). Die Korrektur ist eine Zeile, aber sie verbilligt jeden automatisierten Pfad und
+  verlangt, die Rangfolge-Begründung des Docstrings neu zu prüfen — deshalb ein
+  Meilenstein, keine Zahlenkorrektur. Mit zu entscheiden: ob die Investoren dieselbe
+  Beteiligung auch am Alignment-Risiko tragen sollen, oder ob der Anteil bewusst der Preis
+  der Automatisierung bleibt.
+- **Der Katalog kennt keine defizitäre Sprosse, die ein Spieler erreichen kann**
+  ([BALANCING.md](../BALANCING.md) Nr. 40). `Strategy.prudent` in `tools/simulate.py` lehnt
+  Aufträge ab, deren volles Team defizitär wäre, und ändert über alle sieben Strategien
+  keine einzige Entscheidung — die defizitären Sprossen liegen bei sieben und acht Stellen,
+  und kein Plan, der so besetzt ist, kommt so weit. Das ist erst einmal ein Befund über die
+  Messapparatur (der Docstring ist korrigiert, `--guards` hält es nach), aber es beschreibt
+  auch das Spiel: Die Wahl „lohnt sich dieser Auftrag überhaupt?" wird dem Spieler nie
+  gestellt, weil Bürodeckel und Reserve vorher abweisen. Ob das so bleiben soll, gehört zu
+  den Produkten mit auf den Tisch.
 - **Die Token-Inflation wirkt innerhalb einer Partie nicht** ([BALANCING.md](../BALANCING.md)
   Nr. 30): Die Drift liegt real bei ≈ 0,8 %/Runde und ist kleiner als die Streuung —
   nach 60 Runden liegt der Preis in manchen Läufen unter dem Startwert. Der Gleichstand
