@@ -27,7 +27,7 @@ from automate_inc.core.events import (
     load_event_tuning,
 )
 from automate_inc.core.projects import Project, ProjectRegistry, load_registry
-from automate_inc.core.state import GameState, Phase
+from automate_inc.core.state import START_OFFICE_CAPACITY, GameState, Phase
 from automate_inc.core.tech import (
     Modifiers,
     Technology,
@@ -41,6 +41,22 @@ MISALIGNMENT_THRESHOLD = 20.0
 ALIGNMENT_MAX = 100.0
 ALIGNMENT_MIN = 0.0
 MAX_AGENT_LEVEL = 3
+
+OFFICE_EXPANSION_STEP = 2
+"""Human seats added per ``expand_office`` call."""
+OFFICE_EXPANSION_BASE_COST = 600.0
+OFFICE_EXPANSION_GROWTH = 1.5
+"""Each expansion costs 1.5x the last - money, not research, since this is a
+capacity decision rather than a tech-tree entry (M5)."""
+
+INVESTOR_EQUITY_STEP = 8.0
+INVESTOR_EQUITY_CAP = 40.0
+"""Never a majority: the equity drag is a permanent income cut, not a second
+route to the hostile-takeover ending VISION.md reserves for alignment."""
+INVESTOR_FUNDING_AMOUNT = 1200.0
+"""Cash per ``raise_funding`` call, at the voluntary rate - ``investor_threat``'s
+``give_equity`` option pays the same equity at a worse rate because it is asked
+for under pressure, not offered."""
 
 
 @dataclass(frozen=True)
@@ -65,6 +81,7 @@ class TurnReport:
     costs_tokens: float = 0.0
     tokens_auto_bought: float = 0.0
     auto_buy_cost: float = 0.0
+    investor_payout: float = 0.0
     alignment_delta: float = 0.0
     money_before: float = 0.0
     money_after: float = 0.0
@@ -206,6 +223,14 @@ class Game:
         """Upgrading costs one round of the new level's pay, like hiring does."""
         return self.hiring_cost(worker.role, WorkerType.AGENT, worker.level + 1)
 
+    def office_expansion_cost(self) -> float:
+        """Each expansion costs more than the last - the capacity itself encodes
+        how many have already happened, so there is nothing else to track."""
+        expansions_done = (
+            self.state.office_capacity - START_OFFICE_CAPACITY
+        ) // OFFICE_EXPANSION_STEP
+        return OFFICE_EXPANSION_BASE_COST * OFFICE_EXPANSION_GROWTH**expansions_done
+
     # -- actions -------------------------------------------------------------
 
     def hire_worker(self, role: Role, worker_type: WorkerType, level: int = 1) -> ActionResult:
@@ -217,6 +242,12 @@ class Game:
             if not 1 <= level <= unlocked:
                 return ActionResult.failure(
                     S.ERR_AGENT_LEVEL_LOCKED.format(level=level, unlocked=unlocked)
+                )
+        else:
+            humans = sum(1 for w in self.state.workers if w.is_human)
+            if humans >= self.state.office_capacity:
+                return ActionResult.failure(
+                    S.ERR_OFFICE_FULL.format(capacity=self.state.office_capacity)
                 )
         needed = self.hiring_cost(role, worker_type, level)
         if self.state.money < needed:
@@ -380,6 +411,37 @@ class Game:
         self.state.tokens += amount
         return ActionResult.success(S.TOKENS_BOUGHT.format(amount=amount, cost=cost))
 
+    def expand_office(self) -> ActionResult:
+        """Buy room for more humans. Agents never needed a desk (M5)."""
+        if (blocked := self._guard()) is not None:
+            return blocked
+        cost = self.office_expansion_cost()
+        if self.state.money < cost:
+            return ActionResult.failure(
+                S.ERR_NOT_ENOUGH_MONEY.format(needed=cost, have=self.state.money)
+            )
+        self.state.money -= cost
+        self.state.office_capacity += OFFICE_EXPANSION_STEP
+        return ActionResult.success(
+            S.OFFICE_EXPANDED.format(capacity=self.state.office_capacity, cost=cost)
+        )
+
+    def raise_funding(self) -> ActionResult:
+        """Sell a slice of the company for cash, permanently, starting next round."""
+        if (blocked := self._guard()) is not None:
+            return blocked
+        if self.state.investor_equity >= INVESTOR_EQUITY_CAP:
+            return ActionResult.failure(S.ERR_EQUITY_CAP.format(cap=INVESTOR_EQUITY_CAP))
+        self.state.money += INVESTOR_FUNDING_AMOUNT
+        self.state.investor_equity = min(
+            INVESTOR_EQUITY_CAP, self.state.investor_equity + INVESTOR_EQUITY_STEP
+        )
+        return ActionResult.success(
+            S.FUNDING_RAISED.format(
+                amount=INVESTOR_FUNDING_AMOUNT, equity=self.state.investor_equity
+            )
+        )
+
     def answer_event(self, event_id: str, option_id: str) -> ActionResult:
         """Resolve one open decision. Validates before it mutates, like every action.
 
@@ -424,6 +486,11 @@ class Game:
                         ALIGNMENT_MIN, min(ALIGNMENT_MAX, self.state.alignment + amount)
                     )
                     parts.append(f"{amount:+.0f} ⚖")
+                elif key == "equity":
+                    self.state.investor_equity = min(
+                        INVESTOR_EQUITY_CAP, self.state.investor_equity + amount
+                    )
+                    parts.append(f"{amount:+.0f} % Anteile")
         else:
             self.state.active_events.append(
                 ActiveEffect(event_id=event.id, option_id=option.id, remaining=option.duration)
@@ -477,6 +544,7 @@ class Game:
         money_costs, token_costs = self._calculate_costs(modifiers, pressure)
         report.costs_money = money_costs
         report.costs_tokens = token_costs
+        self._pay_investors(report)
         self._settle(report)
         self._trigger_events(report, rng)
         self._age_events(report)
@@ -604,8 +672,23 @@ class Game:
         total = total + economy.pressure_costs(self.state.workers, pressure)
         return total.money, total.tokens
 
+    def _pay_investors(self, report: TurnReport) -> None:
+        """A fixed share of gross income, gone before it ever reaches the player.
+
+        Read off ``income`` rather than net profit - the equity was sold against
+        revenue, not against whatever survives costs, and this keeps the line a
+        deterministic function of a value already on the report."""
+        if not self.state.investor_equity:
+            return
+        report.investor_payout = report.income * self.state.investor_equity / 100
+        report.events.append(
+            S.INVESTOR_PAYOUT.format(
+                amount=report.investor_payout, share=self.state.investor_equity
+            )
+        )
+
     def _settle(self, report: TurnReport) -> None:
-        self.state.money += report.income - report.costs_money
+        self.state.money += report.income - report.costs_money - report.investor_payout
         self.state.tokens -= report.costs_tokens
         if self.state.tokens < 0:
             # Agents do not stop working because the token balance ran dry;

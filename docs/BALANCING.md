@@ -362,3 +362,37 @@ schließt einen unglücklichen Ausgang nicht aus.
 **Nicht separat simuliert:** Überbesetzung jenseits der von einem Projekt geforderten
 Stellen bleibt so teuer wie vor M4 (BALANCING.md 6) und wurde hier nicht erneut vermessen
 — das ist keine neue Eigenschaft von M4, sondern dieselbe bestehende Regel.
+
+---
+
+# Meilenstein 5
+
+## 20. Büro-Ausbau und Investoren-Anteil sind gegen bestehende Tabellen kalibriert, nicht neu simuliert
+
+Anders als M3 und M4 sind beide Mechaniken **strikt optional**: Der Bürodeckel startet
+bei genau der Stellenzahl, die die minimal besetzte Web-App-Strategie aus Nr. 19 ohnehin
+braucht, und `raise_funding` ist eine freiwillige Aktion. Keine der beiden Zahlen greift
+in den bereits kalibrierten Grundlauf ein, solange der Spieler sie nicht zieht — deshalb
+lohnt sich hier keine neue Elf-Seeds-Simulation wie bei M4, sondern ein Abgleich gegen die
+Größenordnungen, die schon in dieser Tabelle stehen:
+
+- **Büro-Erweiterung (600 € · 1,5ⁿ):** Die erste Erweiterung (600 €) liegt in der
+  Größenordnung des gesamten Nettoertrags eines E-Commerce-Shops über seine Laufzeit
+  (697 €, Nr. 14) — eine Investition, die sich wie ein Projekt anfühlen soll, nicht wie
+  eine Nebenausgabe. Bei Startkapital von 1.000 € ist sie ab Runde 1 möglich, aber nicht
+  beiläufig.
+- **Investoren-Anteil (8 Prozentpunkte pro Runde, Deckel 40 %):** Bei den in Nr. 19
+  gemessenen Automatisierungsläufen (Kontrollverlust Runde 15–18, Tiefststand 594–744 €)
+  zieht eine einzelne Finanzierungsrunde über die Restlaufzeit deutlich weniger ab, als
+  die 1.200 € Soforteinnahme wert sind — der volle Deckel (fünf Runden, 6.000 € sofort,
+  40 % dauerhaft) kehrt das für ein Spiel um, das noch lange läuft. Das ist beabsichtigt:
+  ein kurzfristig richtiger Zug, der sich nur bei einer langen Partie rächt, ist genau die
+  Art Kompromiss, die die Ereignis-Kategorie INVESTOR schon vorgibt.
+- `give_equity` in `investor_threat` kostet jetzt denselben Anteil zum schlechteren Kurs
+  (1.500 € statt 1.200 € für dieselben 8 Punkte, plus −10 Alignment) — vorher war die
+  Option mit 3.000 € ohne Folgekosten der dominante Ausweg aus jeder Investoren-Drohung.
+
+**Offen:** Eine Partie, die beide Mechaniken aggressiv nutzt (mehrfach erweitern, bis zum
+Deckel finanzieren) über volle Spiellänge, ist nicht durchgespielt. Sollte sich das als zu
+großzügig oder zu strafend erweisen, sind beide Formeln zwei Konstanten in `core/game.py`,
+keine Katalog-Änderung.

@@ -277,8 +277,8 @@
       "options": [
         {
           "id": "give_equity",
-          "label": "Notfinanzierung annehmen (+3.000 €, Anteile abgeben)",
-          "effects": { "money": 3000, "alignment": -10 }
+          "label": "Notfinanzierung annehmen (+1.500 €, 8 % Anteile, Alignment -10)",
+          "effects": { "money": 1500, "equity": 8, "alignment": -10 }
         },
         {
           "id": "refuse",

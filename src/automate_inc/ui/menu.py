@@ -8,7 +8,12 @@ from rich.console import Console
 from rich.text import Text
 
 from automate_inc import strings as S
-from automate_inc.core.game import ActionResult, Game
+from automate_inc.core.game import (
+    INVESTOR_EQUITY_STEP,
+    INVESTOR_FUNDING_AMOUNT,
+    ActionResult,
+    Game,
+)
 from automate_inc.core.workers import Role, WorkerType, load_roles
 from automate_inc.ui import dashboard
 
@@ -199,6 +204,18 @@ class Menu:
             return self.note(S.CANCELLED, style="dim")
         self.show(self.game.upgrade_agent(worker_id))
 
+    def expand_office(self) -> None:
+        cost = self.game.office_expansion_cost()
+        self.console.print(f"Erweiterung kostet [yellow]{cost:.2f} €[/yellow].")
+        self.show(self.game.expand_office())
+
+    def raise_funding(self) -> None:
+        self.console.print(
+            f"[yellow]{INVESTOR_FUNDING_AMOUNT:.0f} €[/yellow] gegen "
+            f"[yellow]{INVESTOR_EQUITY_STEP:.0f} %[/yellow] Anteile."
+        )
+        self.show(self.game.raise_funding())
+
     def buy_tokens(self) -> None:
         price = self.game.state.token_price
         self.console.print()
@@ -266,6 +283,8 @@ class Menu:
             "6": self.buy_tokens,
             "7": self.research,
             "8": self.upgrade,
+            "e": self.expand_office,
+            "i": self.raise_funding,
             "9": self.end_turn,
             "s": self.save,
             "l": self.load,

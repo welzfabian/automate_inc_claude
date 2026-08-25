@@ -113,7 +113,7 @@ def test_agent_level_and_staleness_counter_survive_the_round_trip():
     assert restored.workers[0].rounds_in_assignment == original.workers[0].rounds_in_assignment
 
 
-@pytest.mark.parametrize("old_version", [1, 2, 3, 4])
+@pytest.mark.parametrize("old_version", [1, 2, 3, 4, 5])
 def test_saves_from_older_formats_are_rejected(old_version):
     """Each version lost a field the next one has. No migration path on purpose."""
     data = researched_game().state.to_dict()
@@ -122,8 +122,8 @@ def test_saves_from_older_formats_are_rejected(old_version):
         GameState.from_dict(data)
 
 
-def test_the_current_save_format_is_version_five():
-    assert SAVE_FORMAT_VERSION == 5
+def test_the_current_save_format_is_version_six():
+    assert SAVE_FORMAT_VERSION == 6
 
 
 def test_project_service_level_survives_the_round_trip():

@@ -11,7 +11,7 @@ representative case.
 import pytest
 
 from automate_inc import strings as S
-from automate_inc.core.game import MAX_AGENT_LEVEL, Game
+from automate_inc.core.game import INVESTOR_EQUITY_CAP, MAX_AGENT_LEVEL, Game
 from automate_inc.core.workers import Role, Worker, WorkerType
 
 # -- refused once the game is over --------------------------------------------
@@ -30,6 +30,8 @@ GUARDED_CALLS = [
     pytest.param(lambda g: g.upgrade_agent("w_1"), id="upgrade_agent"),
     pytest.param(lambda g: g.buy_tokens(5), id="buy_tokens"),
     pytest.param(lambda g: g.answer_event("e_1", "opt_1"), id="answer_event"),
+    pytest.param(lambda g: g.expand_office(), id="expand_office"),
+    pytest.param(lambda g: g.raise_funding(), id="raise_funding"),
 ]
 
 
@@ -79,6 +81,12 @@ def _game_with_a_maxed_agent() -> Game:
     game.state.workers.append(
         Worker(id="w_max", role=Role.DEVELOPER, worker_type=WorkerType.AGENT, level=MAX_AGENT_LEVEL)
     )
+    return game
+
+
+def _game_at_the_equity_cap() -> Game:
+    game = Game(seed=1)
+    game.state.investor_equity = INVESTOR_EQUITY_CAP
     return game
 
 
@@ -136,6 +144,10 @@ FAILURE_CASES = [
     pytest.param(_fresh_game, lambda g: g.buy_tokens(0), id="buy_tokens_invalid_amount"),
     pytest.param(
         _fresh_game, lambda g: g.answer_event("nope", "nope"), id="answer_event_unknown_decision"
+    ),
+    pytest.param(_broke_game, lambda g: g.expand_office(), id="expand_office_insufficient_money"),
+    pytest.param(
+        _game_at_the_equity_cap, lambda g: g.raise_funding(), id="raise_funding_at_cap"
     ),
 ]
 

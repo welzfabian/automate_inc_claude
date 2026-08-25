@@ -321,6 +321,15 @@ def test_an_instant_option_books_money_immediately():
     assert game.state.money == pytest.approx(money_before - 300.0)
 
 
+def test_give_equity_permanently_raises_investor_equity():
+    """M5: investor_threat's give_equity is no longer a free 3.000 € - it sells a
+    permanent income share, the same effect raise_funding grants voluntarily."""
+    game = Game(seed=1)
+    force_pending(game, "investor_threat")
+    assert game.answer_event("investor_threat", "give_equity").ok
+    assert game.state.investor_equity == pytest.approx(8.0)
+
+
 def test_a_running_option_becomes_active_pressure():
     game = Game(seed=1)
     force_pending(game, "ai_regulation")

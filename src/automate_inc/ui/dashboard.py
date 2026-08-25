@@ -87,7 +87,7 @@ def header(game: Game) -> RenderableType:
         ("  ──  ", "dim"),
         (S.PHASE_NAMES[phase.value], phase_style),
     )
-    resources = Text.assemble(
+    parts: list[tuple[str, str]] = [
         ("€ ", "dim"),
         (f"{state.money:,.2f}", money_style(state.money)),
         ("     ♦ ", "dim"),
@@ -98,7 +98,11 @@ def header(game: Game) -> RenderableType:
         ("     ⚖ ", "dim"),
         (f"{state.alignment:.0f}", alignment_style(state.alignment)),
         (f" ({delta:+.0f}/Runde)", "dim" if delta >= 0 else "dim red"),
-    )
+    ]
+    if state.investor_equity:
+        parts.append(("     💼 ", "dim"))
+        parts.append((f"{state.investor_equity:.0f} % Investoren", "dim red"))
+    resources = Text.assemble(*parts)
     return Panel(Group(Align.center(title), Align.center(resources)), border_style=phase_style)
 
 
@@ -142,8 +146,10 @@ def projects_table(game: Game) -> RenderableType:
 
 def team_table(game: Game) -> RenderableType:
     state = game.state
+    humans = sum(1 for w in state.workers if w.is_human)
+    title = f"{S.HEADER_TEAM} — 🧑 {humans}/{state.office_capacity}"
     if not state.workers:
-        return Panel(Text(S.EMPTY_TEAM, style="dim"), title=S.HEADER_TEAM)
+        return Panel(Text(S.EMPTY_TEAM, style="dim"), title=title)
 
     catalog = load_roles()
     table = Table(expand=True, header_style="dim", box=None, pad_edge=False)
@@ -165,7 +171,7 @@ def team_table(game: Game) -> RenderableType:
             worker_cost(worker, game),
             project.name if project else Text(S.UNASSIGNED, style="dim"),
         )
-    return Panel(table, title=S.HEADER_TEAM, border_style="dim")
+    return Panel(table, title=title, border_style="dim")
 
 
 def worker_cost(worker: Worker, game: Game) -> Text:
@@ -325,6 +331,8 @@ def turn_summary(report: TurnReport) -> RenderableType:
     table.add_row("Einnahmen", Text(f"{report.income:+,.2f} €", style="green"))
     table.add_row("Kosten", Text(f"{-report.costs_money:,.2f} €", style="red"))
     table.add_row("Tokens verbraucht", Text(f"{report.costs_tokens:,.0f} ♦", style="yellow"))
+    if report.investor_payout:
+        table.add_row("Investoren-Anteil", Text(f"{-report.investor_payout:,.2f} €", style="red"))
     table.add_row("Bilanz", Text(f"{report.net:+,.2f} €", style=money_style(report.net)))
     if report.alignment_delta:
         table.add_row(

@@ -45,7 +45,7 @@ class EventCategory(str, Enum):
     INVESTOR = "INVESTOR"
 
 
-INSTANT_FIELDS = frozenset({"money", "research", "tokens", "alignment"})
+INSTANT_FIELDS = frozenset({"money", "research", "tokens", "alignment", "equity"})
 """Booked once, the moment an option is chosen - never read by ``Pressure``."""
 
 RUNNING_FIELDS = frozenset(
