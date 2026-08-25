@@ -277,13 +277,34 @@
       "options": [
         {
           "id": "give_equity",
-          "label": "Notfinanzierung annehmen (+3.000 €, Anteile abgeben)",
-          "effects": { "money": 3000, "alignment": -10 }
+          "label": "Notfinanzierung annehmen (+1.500 €, 8 % Anteile, Alignment -10)",
+          "effects": { "money": 1500, "equity": 8, "alignment": -10 }
         },
         {
           "id": "refuse",
           "label": "Ablehnen (Vertragsstrafe, 500 €)",
           "effects": { "money": -500 }
+        }
+      ]
+    },
+    {
+      "id": "dividend_call",
+      "category": "INVESTOR",
+      "name": "Dividende fällig",
+      "description": "Die Investoren wollen sehen, dass sich ihr Anteil auszahlt — nicht erst am Jahresende.",
+      "requires": { "min_investor_equity": 1.0, "min_turn": 6, "every_n_turns": 4 },
+      "chance": 1.0,
+      "once": false,
+      "options": [
+        {
+          "id": "pay_out",
+          "label": "Sonderausschüttung zahlen (400 €)",
+          "effects": { "money": -400 }
+        },
+        {
+          "id": "stall",
+          "label": "Vertrösten",
+          "effects": { "equity": 5, "alignment": -6 }
         }
       ]
     }

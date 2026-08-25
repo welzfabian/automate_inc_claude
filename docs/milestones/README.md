@@ -11,7 +11,7 @@ Teil davon war.
 | [M2](./M2_AUTOMATION_BITES_BACK.md) | Automatisierung beißt zurück | ✅ Abgeschlossen | 24. August 2026 |
 | [M3](./M3_SERVICE_LEVEL_AND_MAINTENANCE.md) | Servicegrad und Instandhaltung | ✅ Abgeschlossen | 24. August 2026 |
 | [M4](./M4_EVENTS.md) | Druck von außen: Ereignisse | ✅ Abgeschlossen | 24. August 2026 |
-| M? | Weitere Geldsenken *(noch nicht geplant)* | ⬜ offen | — |
+| [M5](./M5_OFFICE_AND_INVESTORS.md) | Büro-Ausbau und Investoren-Auszahlung | ✅ Abgeschlossen | 25. August 2026 |
 
 ## Offene Punkte ohne eigenen Meilenstein
 
@@ -24,9 +24,10 @@ hier, damit sie beim Planen des nächsten Meilensteins auf dem Tisch liegen.
   KI-Regulierung als laufende Fixkosten, dazu einmalige Kosten wie Rezession oder Auto
   kaputt) eine echte Geldsenke — ein Ein-Projekt-Team mit dünner Marge geht jetzt in
   knapp der Hälfte simulierter Läufe bankrott, wo es vorher nie geschah
-  ([BALANCING.md](../BALANCING.md) Nr. 19). **Ausdrücklich nicht abschließend**: Produkte,
-  Upgrades, Büro-Ausbau und Investoren-Auszahlungen jenseits der Ereignis-Fixkosten
-  bleiben Kandidaten für einen späteren Meilenstein.
+  ([BALANCING.md](../BALANCING.md) Nr. 19). [M5](./M5_OFFICE_AND_INVESTORS.md) deckt davon
+  Büro-Ausbau und Investoren-Auszahlungen ab. **Ausdrücklich nicht abschließend**:
+  Produkte, Upgrades und Agenten-Wartung bleiben Kandidaten für einen späteren
+  Meilenstein.
 - **Kunden-App und Web-App sind wirtschaftlich fast identisch** — beide fordern drei
   Stellen, und die Zielgröße hängt nur an der Stellenzahl. Eine der beiden braucht eine
   vierte Stelle oder eine andere Laufzeit.

@@ -31,6 +31,11 @@ WORKER_UNASSIGNED = "{worker} wurde von „{project}“ abgezogen."
 TOKENS_BOUGHT = "{amount:.0f} ♦ gekauft für {cost:.2f} €."
 RESEARCH_DONE = "„{name}“ erforscht. {effect}"
 AGENT_UPGRADED = "{role}-Agent auf Stufe {level} gehoben. Er hat nicht gefragt, warum."
+OFFICE_EXPANDED = "Büro erweitert auf {capacity} Menschen. Kostenpunkt: {cost:.2f} €."
+FUNDING_RAISED = (
+    "Finanzierungsrunde abgeschlossen: {amount:.0f} € sofort. "
+    "Investoren halten jetzt {equity:.0f} % des Einkommens."
+)
 GAME_SAVED = "Spielstand gespeichert: {path}"
 GAME_LOADED = "Spielstand geladen: {path}"
 EVENT_RESOLVED = "„{name}“ — {label}: {effect}"
@@ -71,6 +76,11 @@ ERR_AGENT_LEVEL_LOCKED = (
 )
 ERR_NOT_AN_AGENT = "Menschen lassen sich nicht aufwerten. Das ist der Unterschied."
 ERR_MAX_LEVEL = "Stufe 3 ist das Maximum. Weiter geht es nur ohne dich."
+ERR_OFFICE_FULL = (
+    "Das Büro hat nur Platz für {capacity} Menschen. Erweitern oder einen Agenten "
+    "einstellen — der braucht keinen Schreibtisch."
+)
+ERR_EQUITY_CAP = "Investoren halten bereits {cap:.0f} % — mehr geben sie nicht her."
 ERR_GAME_OVER = "Das Spiel ist vorbei. Du kannst nichts mehr tun."
 ERR_UNKNOWN_EVENT_DECISION = "Diese Entscheidung steht gerade nicht an."
 ERR_UNKNOWN_EVENT_OPTION = "Diese Option gibt es für dieses Ereignis nicht."
@@ -85,6 +95,7 @@ TOKENS_AUTO_BOUGHT = (
 PROJECT_EXPIRED = "Projekt „{name}“ ist ausgelaufen. Der Kunde bedankt sich nicht."
 TOKEN_PRICE_CHANGED = "Token-Preis: {old:.2f} € → {new:.2f} €"
 ALIGNMENT_CHANGED = "Alignment: {delta:+.0f} → {value:.0f}"
+INVESTOR_PAYOUT = "Investoren-Anteil ({share:.0f} %): -{amount:.2f} €"
 PHASE_CHANGED = "Neue Phase: {phase}"
 PHASE_REGRESSED = "Zurück in Phase {phase}. Die Firma ist wieder kleiner als ihr Anspruch."
 EVENT_TRIGGERED = "📩 Neues Ereignis: {name}"
@@ -155,6 +166,8 @@ MENU_ITEMS = [
     ("6", "Tokens kaufen"),
     ("7", "Forschung"),
     ("8", "Agent aufwerten"),
+    ("e", "Büro erweitern"),
+    ("i", "Finanzierung aufnehmen"),
     ("9", "Runde beenden"),
     ("s", "Speichern"),
     ("l", "Laden"),

@@ -11,13 +11,21 @@ from automate_inc.core.events import ActiveEffect
 from automate_inc.core.projects import Project
 from automate_inc.core.workers import Worker
 
-SAVE_FORMAT_VERSION = 5
+SAVE_FORMAT_VERSION = 6
 
 START_MONEY = 1000.0
 START_TOKENS = 50.0
 START_TOKEN_PRICE = 10.0
 START_RESEARCH = 0
 START_ALIGNMENT = 100.0
+START_OFFICE_CAPACITY = 3
+"""Exactly what the minimal single-project team needs (BALANCING.md 19) - the
+baseline strategy never has to touch ``expand_office``."""
+START_INVESTOR_EQUITY = 15.0
+"""The seed money was never yours - the first slice is already gone on turn 0.
+Payouts are a share of net profit, never of revenue (``Game._pay_investors``),
+so this pauses on its own the moment a team is struggling instead of being
+able to push a marginal run into bankruptcy. Calibrated in BALANCING.md 21."""
 
 MAX_LOG_ENTRIES = 200
 
@@ -73,6 +81,11 @@ class GameState:
     """Turn each event last triggered on, for its cooldown."""
     last_net: float | None = None
     """The previous round's net result, read by the ``max_last_net`` condition."""
+    office_capacity: int = START_OFFICE_CAPACITY
+    """How many human workers fit at once. Agents are exempt - see ``Game.expand_office``."""
+    investor_equity: float = START_INVESTOR_EQUITY
+    """Percentage of income permanently owed to investors, see ``Game.raise_funding``.
+    Starts above zero: the seed round already sold a slice, on turn 0."""
 
     def phase(self, unlocked_agent_level: int = 1) -> Phase:
         """Which phase the company is in, derived from what the player has done.
@@ -134,6 +147,8 @@ class GameState:
             "event_history": list(self.event_history),
             "event_last_turn": dict(self.event_last_turn),
             "last_net": self.last_net,
+            "office_capacity": self.office_capacity,
+            "investor_equity": self.investor_equity,
         }
 
     @classmethod
@@ -160,6 +175,8 @@ class GameState:
             event_history=list(data["event_history"]),
             event_last_turn=dict(data["event_last_turn"]),
             last_net=data["last_net"],
+            office_capacity=data["office_capacity"],
+            investor_equity=data["investor_equity"],
         )
 
     def save(self, path: Path) -> None:

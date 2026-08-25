@@ -362,3 +362,79 @@ schließt einen unglücklichen Ausgang nicht aus.
 **Nicht separat simuliert:** Überbesetzung jenseits der von einem Projekt geforderten
 Stellen bleibt so teuer wie vor M4 (BALANCING.md 6) und wurde hier nicht erneut vermessen
 — das ist keine neue Eigenschaft von M4, sondern dieselbe bestehende Regel.
+
+---
+
+# Meilenstein 5
+
+## 20. Büro-Ausbau und Investoren-Anteil sind gegen bestehende Tabellen kalibriert, nicht neu simuliert
+
+Anders als M3 und M4 sind beide Mechaniken **strikt optional**: Der Bürodeckel startet
+bei genau der Stellenzahl, die die minimal besetzte Web-App-Strategie aus Nr. 19 ohnehin
+braucht, und `raise_funding` ist eine freiwillige Aktion. Keine der beiden Zahlen greift
+in den bereits kalibrierten Grundlauf ein, solange der Spieler sie nicht zieht — deshalb
+lohnt sich hier keine neue Elf-Seeds-Simulation wie bei M4, sondern ein Abgleich gegen die
+Größenordnungen, die schon in dieser Tabelle stehen:
+
+- **Büro-Erweiterung (600 € · 1,5ⁿ):** Die erste Erweiterung (600 €) liegt in der
+  Größenordnung des gesamten Nettoertrags eines E-Commerce-Shops über seine Laufzeit
+  (697 €, Nr. 14) — eine Investition, die sich wie ein Projekt anfühlen soll, nicht wie
+  eine Nebenausgabe. Bei Startkapital von 1.000 € ist sie ab Runde 1 möglich, aber nicht
+  beiläufig.
+- **Investoren-Anteil (8 Prozentpunkte pro Runde, Deckel 40 %):** Bei den in Nr. 19
+  gemessenen Automatisierungsläufen (Kontrollverlust Runde 15–18, Tiefststand 594–744 €)
+  zieht eine einzelne Finanzierungsrunde über die Restlaufzeit deutlich weniger ab, als
+  die 1.200 € Soforteinnahme wert sind — der volle Deckel (fünf Runden, 6.000 € sofort,
+  40 % dauerhaft) kehrt das für ein Spiel um, das noch lange läuft. Das ist beabsichtigt:
+  ein kurzfristig richtiger Zug, der sich nur bei einer langen Partie rächt, ist genau die
+  Art Kompromiss, die die Ereignis-Kategorie INVESTOR schon vorgibt.
+- `give_equity` in `investor_threat` kostet jetzt denselben Anteil zum schlechteren Kurs
+  (1.500 € statt 1.200 € für dieselben 8 Punkte, plus −10 Alignment) — vorher war die
+  Option mit 3.000 € ohne Folgekosten der dominante Ausweg aus jeder Investoren-Drohung.
+
+**Offen:** Eine Partie, die beide Mechaniken aggressiv nutzt (mehrfach erweitern, bis zum
+Deckel finanzieren) über volle Spiellänge, ist nicht durchgespielt. Sollte sich das als zu
+großzügig oder zu strafend erweisen, sind beide Formeln zwei Konstanten in `core/game.py`,
+keine Katalog-Änderung.
+
+## 21. Investoren-Anteil auf Nettogewinn statt Umsatz — und ein Startwert, der nicht geraten ist
+
+**Nachtrag zu M5, noch am selben Tag.** Zwei Erweiterungen: Der Spieler startet nicht mehr
+bei 0 % Investorenanteil, sondern bei einem festen Startwert (das Startkapital war immer
+Investorengeld, keine Ersparnis), und ein neues Ereignis `dividend_call` verlangt alle vier
+Runden eine sichtbare Entscheidung, statt den Anteil nur still im Hintergrund wirken zu
+lassen.
+
+**Der Fehler, den die erste Version davon aufgedeckt hat:** `_pay_investors` zog den Anteil
+ursprünglich vom **Bruttoeinkommen** ab (`report.income`), nicht vom Nettogewinn. Das sah
+in Abschnitt 20 harmlos aus, weil beide dortigen Mechaniken optional sind — aber ein
+Startwert > 0 % gilt für **jede** Partie, und ein pauschaler Umsatzabzug trifft die
+volle Besetzung eines Projekts in absoluten Zahlen härter als eine Teilbesetzung, obwohl
+deren Netto-Vorsprung oft hauchdünn ist. Genau das brach zwei der vier
+`test_full_staffing_beats_every_partial_staffing`-Fälle (`mobile_app`, `web_app`) —
+die Eigenschaft, die CLAUDE.md als tragend markiert. **Auflösung:** Der Abzug skaliert
+jetzt `income - costs_money`, also den Nettogewinn der Runde, und bleibt bei einer
+Verlustrunde bei 0. Eine Skalierung mit demselben Faktor auf beiden Seiten einer
+Ungleichung kann deren Richtung nie umkehren — die Eigenschaft ist damit nicht nur
+repariert, sondern strukturell nicht mehr kaputtzubekommen, solange der Abzug ein reiner
+Faktor auf einer bereits verglichenen Größe bleibt.
+
+**Kalibrierung des Startwerts (15 %):** Die erste Vermutung — 15 % würde die in Nr. 19
+dokumentierte 55-%-Überlebensrate der minimal besetzten Web-App-Strategie ungefähr
+reproduzieren — beruhte noch auf der fehlerhaften Umsatz-Formel und ist mit der Korrektur
+hinfällig; ein eigenes Testskript (nicht Teil der Suite) mit `game.state.investor_equity`
+von 0 bis 25 % über elf Seeds und 60 Runden zeigt, dass die netto-basierte Variante
+absichtlich milde ist: Sie senkt den Tiefststand des Spielguthabens spürbar (bei 15 % rund
+20 % niedriger als bei 0 %), kippt aber in keinem der Läufe zusätzlich in den Bankrott —
+weil sie in einer schwachen Runde automatisch aussetzt. 15 % ist damit bewusst als "spürbar,
+aber selbstbegrenzend" gewählt, nicht als exakte Reproduktion einer früheren Kennzahl.
+**Nicht behauptet:** Dieses Testskript nutzt eine eigene, vereinfachte Spielpolitik
+("günstigste Option, sonst Projekt neu starten") und reproduziert die 55-%-Zahl aus Nr. 19
+selbst bei 0 % Startanteil nicht — die beiden Methoden sind nicht direkt vergleichbar,
+nur die *relative* Wirkung innerhalb derselben Methode ist belastbar.
+
+**`dividend_call`:** alle vier Runden ab Runde 6, sobald `investor_equity > 0` — zahlen
+(400 €) oder vertrösten (+5 Prozentpunkte, −6 Alignment). Vertrösten ist bewusst teurer als
+eine einzelne Zahlung, damit "immer vertrösten" keine dominante Strategie wird; nicht
+separat gegensimuliert, da der Effekt (mehr Anteile, mehr laufender Abzug) derselben
+selbstbegrenzenden Nettogewinn-Logik unterliegt wie der Startwert.
